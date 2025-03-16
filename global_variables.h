@@ -46,18 +46,18 @@
 
 //--- Objects, variables,... ---
 Currents i;
-ADC_RAW_t ADC_RAW;				// [cnt] Q12
-IFX_Q_ABC_t Iabc;				// [pu] Qxx
-IFX_Q_ALPHA_BETA_t Ialphabeta;  // [pu] Qxx
-IFX_Q_DQ_t Idq;                 // [pu] Qxx
-uint16_t ThetaMeRaw_U16 = 0;	// [pu] Q1.15
-uint16_t ThetaMeRawOld_U16 = 0;	// [pu] Q1.15
-int16_t dThetaMeRaw_S16 = 0;	// [pu] Q1.15
+ADC_RAW_t ADC_RAW;				// [count] Q12
+IFX_Q_ABC_t Iabc;				// [per-unit] Qxx
+IFX_Q_ALPHA_BETA_t Ialphabeta;  // [per-unit] Qxx
+IFX_Q_DQ_t Idq;                 // [per-unit] Qxx
+uint16_t ThetaMeRaw_U16 = 0;	// [per-unit] Q1.15
+uint16_t ThetaMeRawOld_U16 = 0;	// [per-unit] Q1.15
+int16_t dThetaMeRaw_S16 = 0;	// [per-unit] Q1.15
 int16_t SpdCtrlPrdFg = 1;		//
 
-uint16_t ThetaReRaw_U16 = 0;	// [pu] Q1.15
+uint16_t ThetaReRaw_U16 = 0;	// [per-unit] Q1.15
 q_t Cos_Q12 = IFX_Q(1.0f);
-q_t Sin_Q12 = IFX_Q(0.0f);		// Q1.11		For trigonometric values
+q_t Sin_Q12 = IFX_Q(0.0f);		// Q1.11, for trigonometric values
 q_t RpmRef = 0, RpmFbk = 0;
 q_t RpmRef_p125 = 0, RpmFbk_p125 = 0;
 q_t RpmRefPu = 0, RpmFbkPu = 0;

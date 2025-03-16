@@ -30,47 +30,72 @@
  * agrees to indemnify Cypress against all liability.
 ******************************************************************************/
 /*
- * Currents.h
+ * Currents.c
  *
  *  Created on: 24 Aug 2023
  *      Author: SchiestlMart
  */
 
-#ifndef LIBRARIES_CURRENTS_H_
-#define LIBRARIES_CURRENTS_H_
+#include "Currents.h"
 
-#include "xmc_common.h"
-#include "../6EDL7141/6EDL_gateway.h"
-#include "../Libraries/ADC_MEASUREMENT/adc_measurement.h"
+void init_currents(Currents* i){
 
-#define ADC_TOTAL_STEPS 4096
-#define VREF 5
-#define AMPLIFICATION 64
-#define SHUNT_RESISTANCE 0.01
+	if(I_OFFSET_CALIBRATION_CS_EN_DCCAL == false){
+		/* load 6EDL7141 parameter from flash,
+		 * set Edl7141Configured to 1 if load was succeed */
+		EDL7141_FLASH_parameter_load();
 
-#define I_OFFSET_CALIBRATION_CS_EN_DCCAL false
-#define VADC_OFFSET_SAMPLES_NUM		1000		// Number of Samples used for initial DC Offset Calibration
+		Edl7141Reg.SENSOR_CFG =
+				HALL_DEGLITCH_640ns	<< SENSOR_CFG_HALL_DEGLITCH_Pos |
+				OTEMP_PROT_DIS		<< SENSOR_CFG_OTS_DIS_Pos |
+				CS_ACTIVE_ALWAYS	<< SENSOR_CFG_CS_TMODE_Pos;
 
+		// Enable CSO Calibration
+		Edl7141Reg.CSAMP_CFG =
+				CS_GAIN_64V 		<< CSAMP_CFG_CS_GAIN_Pos |
+				CS_GAIN_PROG_DIG 	<< CSAMP_CFG_CS_GAIN_ANA_Pos |
+				CS_A_EN_B_EN_C_EN	<< CSAMP_CFG_CS_EN_Pos |
+				CS_BLANK_500ns		<< CSAMP_CFG_CS_BLANK_Pos |
+				CS_CALIB_EN			<< CSAMP_CFG_CS_EN_DCCAL_Pos |
+				CS_DEGLITCH_8us		<< CSAMP_CFG_CS_OCP_DEGLITCH_Pos |
+				OCP_FLT_TRIG_8		<< CSAMP_CFG_CS_OCPFLT_CFG_Pos;
 
-typedef struct{
-	float U;
-	float V;
-	float W;
-	float alpha;
-	float beta;
-	float d;
-	float q;
-	float d_ref;
-	float q_ref;
-	float d_ramp;
-	float q_ramp;
-	float ADC_scaling;
-	XMC_VADC_RESULT_SIZE_t U_offset;
-	XMC_VADC_RESULT_SIZE_t V_offset;
-	XMC_VADC_RESULT_SIZE_t W_offset;
-}Currents;
+		/* Initialize SPI interface with 6EDL7141, and 6EDL7141 related IO */
+		EDL7141_Config_init();
 
-void init_currents(Currents* i);
-bool CS_EN_DCCAL_ManualCalibration(Currents* i);
+		while(!CS_EN_DCCAL_ManualCalibration(i));
+	}
+	else{
+		i->U_offset = ADC_TOTAL_STEPS/2;
+		i->V_offset = ADC_TOTAL_STEPS/2;
+		i->W_offset = ADC_TOTAL_STEPS/2;
+	}
 
-#endif /* LIBRARIES_CURRENTS_H_ */
+	i->d_ref = 0.0;
+	i->d_ramp = 0.0;
+	i->q_ramp = 0.0;
+
+	i->ADC_scaling = 1/(ADC_TOTAL_STEPS/VREF*SHUNT_RESISTANCE*AMPLIFICATION);
+}
+
+bool CS_EN_DCCAL_ManualCalibration(Currents* i) {
+	ADC_MEASUREMENT_StartConversion(&ADC_MEASUREMENT_0);
+	static uint16_t Counter = 1;
+	static float i_U_Avg = 0;
+	static float i_V_Avg = 0;
+	static float i_W_Avg = 0;
+
+	i_U_Avg += ADC_MEASUREMENT_GetResult(&ADC_MEASUREMENT_Channel_A);
+	i_V_Avg += ADC_MEASUREMENT_GetResult(&ADC_MEASUREMENT_Channel_B);
+	i_W_Avg += ADC_MEASUREMENT_GetResult(&ADC_MEASUREMENT_Channel_C);
+
+	if(Counter >= VADC_OFFSET_SAMPLES_NUM) {
+		i->U_offset = i_U_Avg / Counter;
+		i->V_offset = i_V_Avg / Counter;
+		i->W_offset = i_W_Avg / Counter;
+		return true;
+	}
+
+	Counter++;
+	return false;
+}

@@ -36,8 +36,10 @@
 #include "stdint.h"
 
 typedef struct IMR_CAN_MESSAGE_STRUCT {
-	uint32_t CAN_ID;			    // Stores CAN ID for message identification
-	uint8_t CAN_DATA[8];			// Stores the CAN data associated with the corresponding CAN COMMAND
+	// Stores CAN ID for message identification
+	uint32_t CAN_ID;
+	// Stores the CAN data associated with the corresponding CAN COMMAND
+	uint8_t CAN_DATA[8];
 } IMR_CAN_MESSAGE_STRUCT_t;
 
 typedef enum IMR_CAN_MESSAGE_IDS {
@@ -83,27 +85,30 @@ typedef enum IMR_CAN_MESSAGE_IDS {
     MOT_BL_ENCODER_DATA = 0x402,
     MOT_BR_ENCODER_DATA = 0x403,
 
+	BAR_GRAPH_BACK = 0x406,
+	BAR_GRAPH = 0x407,
+
     ROBOT_VELOCITY_COMMAND = 0x41C,
     ROBOT_ODOMETRY_ESTIMATE = 0x440,
 
     IMU_DATA = 0x460,
 
-    LED_BOARD_1 = 0x480,
-    LED_BOARD_2 = 0x481,
-    LED_BOARD_3 = 0x482,
-    LED_BOARD_4 = 0x483,
-    LED_BOARD_5 = 0x484,
-    LED_BOARD_6 = 0x485,
-    LED_BOARD_7 = 0x486,
-    LED_BOARD_8 = 0x487,
-    LED_BOARD_9 = 0x488,
-    LED_BOARD_10 = 0x489,
-    LED_BOARD_11 = 0x48A,
-    LED_BOARD_12 = 0x48B,
-    LED_BOARD_13 = 0x48C,
-    LED_BOARD_14 = 0x48D,
-    LED_BOARD_15 = 0x48E,
-    LED_BOARD_16 = 0x48F,
+    LED_LAYER_1_FRONT = 0x480,
+	LED_LAYER_1_LEFT = 0x481,
+	LED_LAYER_1_BACK = 0x482,
+	LED_LAYER_1_RIGHT = 0x483,
+
+	LED_LAYER_2_FRONT = 0x484,
+	LED_LAYER_2_LEFT = 0x485,
+	LED_LAYER_2_BACK = 0x486,
+	LED_LAYER_2_RIGHT = 0x487,
+
+	LED_LAYER_3_FRONT = 0x488,
+	LED_LAYER_3_LEFT = 0x489,
+	LED_LAYER_3_BACK = 0x48A,
+	LED_LAYER_3_RIGHT = 0x48B,
+
+    LED_ALL = 0x48F,
 
     CALIBRATION_REQUEST_ALL_MOTORS = 0x540,
     CALIBRATION_REQUEST_IMU = 0x541
@@ -117,15 +122,17 @@ typedef enum CAN_STATUS_t {
     CAN_DISABLED
 } CAN_STATUS_t;
 
+// Sending LED Effects to SENSOR_LED
 typedef enum IMR_CAN_SENSOR_LED_COMMANDS {
-    LED_MODE_OFF	= 	0x4A,		// Sending LED Effects to SENSOR_LED
+    LED_MODE_OFF	= 	0x4A,
     LED_MODE_CHASER	= 	0x4B,
     LED_MODE_PULSE  = 	0x4C,
     LED_MODE_STEADY	= 	0x4F
 } IMR_CAN_SENSOR_LED_COMMANDS_t;
 
-/***************************************************************************************************************/
+/*****************************************************************************/
 
-CAN_STATUS_t CAN_TX_Request(uint32_t CAN_ID, uint8_t* Target_Data, uint8_t Target_Data_Length);
+CAN_STATUS_t CAN_TX_Request(uint32_t CAN_ID, uint8_t* Target_Data,
+		uint8_t Target_Data_Length);
 
 #endif /* IMR_CAN_GLOBAL_H_ */

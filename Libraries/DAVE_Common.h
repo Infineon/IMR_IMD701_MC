@@ -27,8 +27,8 @@
 /**
  * @file  DAVE_Common.h
  *
- * @brief This file contains all app related public data structures,enums and function
- *        prototypes
+ * @brief This file contains all app related public data structures,
+ * 		  enums and function prototypes
  *
  * Revision History
  * 27 Dec 2014 v0.1.0 Initial Version

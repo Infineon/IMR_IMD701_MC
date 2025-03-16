@@ -39,7 +39,9 @@
 #ifndef LIBRARIES_CONSTANTS_H_
 #define LIBRARIES_CONSTANTS_H_
 
-//#define ENCODER_MODE_SELECTION			(0U)		// 0U ... Manual Speed Calc. w. Moving Average Filter;			1U ... App integrated PT1 Speed Calculation
+// 0U ... Manual Speed Calc. w. Moving Average Filter;
+// 1U ... App integrated PT1 Speed Calculation
+//#define ENCODER_MODE_SELECTION	(0U)
 
 #define VDC 					(24.0f) // DC-link voltage 1/2
 #define SQRT_THREE_HALF 		(0.8660254038f)

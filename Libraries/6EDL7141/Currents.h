@@ -30,74 +30,48 @@
  * agrees to indemnify Cypress against all liability.
 ******************************************************************************/
 /*
- * vtof_controller.c
+ * Currents.h
  *
- *  Created on: 24.07.2024
- *      Author: schoeffmannc
+ *  Created on: 24 Aug 2023
+ *      Author: SchiestlMart
  */
 
-/*
- * ifx_vtof_controller_f32.c
- *
- *  Created on: 15 May 2024
- *      Author: schoeffmannc
- */
+#ifndef LIBRARIES_CURRENTS_H_
+#define LIBRARIES_CURRENTS_H_
 
-/*
-#include "vtof_controller.h"
+#include "xmc_common.h"
+#include "../6EDL7141/6EDL_gateway.h"
+#include "../Libraries/ADC_MEASUREMENT/adc_measurement.h"
 
-void vtof_init(vtof_controller *vtof_controller)
-{
-	vtof_controller->control_rate = VTOF_RATE;
-	vtof_controller->vtof_counter = 1;
-	vtof_controller->rate_ratio = PWM_FREQ_HZ / VTOF_RATE;
-	vtof_controller->vfratio = VDC_24/M / RPM_RATED;
-	vtof_controller->corner_speed = 0.2f * RPM_RATED;
-	vtof_controller->corner_voltage = vtof_controller->vfratio * vtof_controller->corner_speed;
-	vtof_controller->target_speed = VTOF_TARGET_SPEED;
-	vtof_controller->target_voltage = vtof_controller->vfratio * vtof_controller->target_speed;
-	vtof_controller->rampup = VTOF_RAMPUP;
-	vtof_controller->rampup_time = vtof_controller->target_speed / vtof_controller->rampup;
-	vtof_controller->speed = 0.0f;
-	vtof_controller->nr_cycles = vtof_controller->rampup_time * VTOF_RATE;
-	vtof_controller->speed_increment_el = ((vtof_controller->rampup * POLE_PAIR) / 60.0f) / (VTOF_RATE);
-}
+#define ADC_TOTAL_STEPS 4096
+#define VREF 5
+#define AMPLIFICATION 64
+#define SHUNT_RESISTANCE 0.01
 
-void ifx_vtof_rampup(vtof_controller *vtof_controller, float *ref_angle_f32, float *ref_voltage_f32)
-{
-	float delta_angle_f32;
-
-	if (vtof_controller->vtof_counter < vtof_controller->nr_cycles)
-	{
-		vtof_controller->speed += vtof_controller->speed_increment_el;
-
-		delta_angle_f32 = vtof_controller->speed / (VTOF_RATE);
-
-		*ref_angle_f32 += TWO_PI_F32*delta_angle_f32;
-		*ref_voltage_f32 = vtof_controller->vfratio * (vtof_controller->speed * 60.0f / POLE_PAIR);
-
-		if (*ref_angle_f32 >= TWO_PI_F32)
-		{
-			*ref_angle_f32 = 0.0f;
-		}
-
-		vtof_controller->vtof_counter += 1;
-
-	}
-	else
-	{
-		delta_angle_f32 = vtof_controller->speed / (VTOF_RATE);
-
-		*ref_angle_f32 += TWO_PI_F32*delta_angle_f32;
-		*ref_voltage_f32 = vtof_controller->vfratio * (vtof_controller->speed * 60.0f / POLE_PAIR);
-
-		if (*ref_angle_f32 >= TWO_PI_F32)
-		{
-			*ref_angle_f32 = 0.0f;
-		}
-	}
-}
+#define I_OFFSET_CALIBRATION_CS_EN_DCCAL false
+// Number of Samples used for initial DC Offset Calibration
+#define VADC_OFFSET_SAMPLES_NUM		1000
 
 
+typedef struct{
+	float U;
+	float V;
+	float W;
+	float alpha;
+	float beta;
+	float d;
+	float q;
+	float d_ref;
+	float q_ref;
+	float d_ramp;
+	float q_ramp;
+	float ADC_scaling;
+	XMC_VADC_RESULT_SIZE_t U_offset;
+	XMC_VADC_RESULT_SIZE_t V_offset;
+	XMC_VADC_RESULT_SIZE_t W_offset;
+}Currents;
 
-*/
+void init_currents(Currents* i);
+bool CS_EN_DCCAL_ManualCalibration(Currents* i);
+
+#endif /* LIBRARIES_CURRENTS_H_ */

@@ -152,3 +152,4 @@ ehthumbs_vista.db
 
 # Others
 .ninja_log
+.ninja_lock

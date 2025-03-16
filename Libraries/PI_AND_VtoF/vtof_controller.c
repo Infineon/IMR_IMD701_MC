@@ -30,67 +30,72 @@
  * agrees to indemnify Cypress against all liability.
 ******************************************************************************/
 /*
- * Currents.c
+ * vtof_controller.c
  *
- *  Created on: 24 Aug 2023
- *      Author: SchiestlMart
+ *  Created on: 24.07.2024
+ *      Author: schoeffmannc
  */
 
-#include "../Libraries/Currents.h"
+/*
+ * ifx_vtof_controller_f32.c
+ *
+ *  Created on: 15 May 2024
+ *      Author: schoeffmannc
+ */
 
-void init_currents(Currents* i){
+/*
+#include "vtof_controller.h"
 
-	if(I_OFFSET_CALIBRATION_CS_EN_DCCAL == false){
-		EDL7141_FLASH_parameter_load();		/* load 6EDL7141 parameter from flash, set Edl7141Configured to 1 if load was succeed */
-
-		Edl7141Reg.SENSOR_CFG = HALL_DEGLITCH_640ns 	<< SENSOR_CFG_HALL_DEGLITCH_Pos |
-									OTEMP_PROT_DIS	 	<< SENSOR_CFG_OTS_DIS_Pos |
-								  CS_ACTIVE_ALWAYS   	<< SENSOR_CFG_CS_TMODE_Pos;
-
-		// Enable CSO Calibration
-		Edl7141Reg.CSAMP_CFG =  CS_GAIN_64V 		<< CSAMP_CFG_CS_GAIN_Pos |
-								  CS_GAIN_PROG_DIG 	<< CSAMP_CFG_CS_GAIN_ANA_Pos |
-								  CS_A_EN_B_EN_C_EN << CSAMP_CFG_CS_EN_Pos |
-								  CS_BLANK_500ns 	<< CSAMP_CFG_CS_BLANK_Pos |
-								  CS_CALIB_EN       << CSAMP_CFG_CS_EN_DCCAL_Pos |
-								  CS_DEGLITCH_8us 	<< CSAMP_CFG_CS_OCP_DEGLITCH_Pos |
-								  OCP_FLT_TRIG_8 	<< CSAMP_CFG_CS_OCPFLT_CFG_Pos;
-
-		EDL7141_Config_init();				/* Initialize SPI interface with 6EDL7141, and 6EDL7141 related IO */
-
-		while(!CS_EN_DCCAL_ManualCalibration(i));
-	}
-	else{
-		i->U_offset = ADC_TOTAL_STEPS/2;
-		i->V_offset = ADC_TOTAL_STEPS/2;
-		i->W_offset = ADC_TOTAL_STEPS/2;
-	}
-
-	i->d_ref = 0.0;
-	i->d_ramp = 0.0;
-	i->q_ramp = 0.0;
-
-	i->ADC_scaling = 1/(ADC_TOTAL_STEPS/VREF*SHUNT_RESISTANCE*AMPLIFICATION);
+void vtof_init(vtof_controller *vtof_controller)
+{
+	vtof_controller->control_rate = VTOF_RATE;
+	vtof_controller->vtof_counter = 1;
+	vtof_controller->rate_ratio = PWM_FREQ_HZ / VTOF_RATE;
+	vtof_controller->vfratio = VDC_24/M / RPM_RATED;
+	vtof_controller->corner_speed = 0.2f * RPM_RATED;
+	vtof_controller->corner_voltage = vtof_controller->vfratio * vtof_controller->corner_speed;
+	vtof_controller->target_speed = VTOF_TARGET_SPEED;
+	vtof_controller->target_voltage = vtof_controller->vfratio * vtof_controller->target_speed;
+	vtof_controller->rampup = VTOF_RAMPUP;
+	vtof_controller->rampup_time = vtof_controller->target_speed / vtof_controller->rampup;
+	vtof_controller->speed = 0.0f;
+	vtof_controller->nr_cycles = vtof_controller->rampup_time * VTOF_RATE;
+	vtof_controller->speed_increment_el = ((vtof_controller->rampup * POLE_PAIR) / 60.0f) / (VTOF_RATE);
 }
 
-bool CS_EN_DCCAL_ManualCalibration(Currents* i) {
-	ADC_MEASUREMENT_StartConversion(&ADC_MEASUREMENT_0);
-	static uint16_t Counter = 1;
-	static float i_U_Avg = 0;
-	static float i_V_Avg = 0;
-	static float i_W_Avg = 0;
+void ifx_vtof_rampup(vtof_controller *vtof_controller, float *ref_angle_f32, float *ref_voltage_f32)
+{
+	float delta_angle_f32;
 
-	i_U_Avg += ADC_MEASUREMENT_GetResult(&ADC_MEASUREMENT_Channel_A);
-	i_V_Avg += ADC_MEASUREMENT_GetResult(&ADC_MEASUREMENT_Channel_B);
-	i_W_Avg += ADC_MEASUREMENT_GetResult(&ADC_MEASUREMENT_Channel_C);
+	if (vtof_controller->vtof_counter < vtof_controller->nr_cycles)
+	{
+		vtof_controller->speed += vtof_controller->speed_increment_el;
 
-	if(Counter >= VADC_OFFSET_SAMPLES_NUM) {
-		i->U_offset = i_U_Avg / Counter;
-		i->V_offset = i_V_Avg / Counter;
-		i->W_offset = i_W_Avg / Counter;
-		return true;
+		delta_angle_f32 = vtof_controller->speed / (VTOF_RATE);
+
+		*ref_angle_f32 += TWO_PI_F32*delta_angle_f32;
+		*ref_voltage_f32 = vtof_controller->vfratio * (vtof_controller->speed * 60.0f / POLE_PAIR);
+
+		if (*ref_angle_f32 >= TWO_PI_F32)
+		{
+			*ref_angle_f32 = 0.0f;
+		}
+
+		vtof_controller->vtof_counter += 1;
+
 	}
+	else
+	{
+		delta_angle_f32 = vtof_controller->speed / (VTOF_RATE);
 
-	Counter++;
-	return false;
+		*ref_angle_f32 += TWO_PI_F32*delta_angle_f32;
+		*ref_voltage_f32 = vtof_controller->vfratio * (vtof_controller->speed * 60.0f / POLE_PAIR);
+
+		if (*ref_angle_f32 >= TWO_PI_F32)
+		{
+			*ref_angle_f32 = 0.0f;
+		}
+	}
 }
+
+*/

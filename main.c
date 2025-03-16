@@ -2,7 +2,7 @@
 * File Name:   main.c
 *
 * Description: This is the source code for the DEMO_IMR2_Inverter_IMD701A. The
-* initial implementation was done in DAVE and then ported to Modus Toolbox.
+* initial implementation was done in DAVE and then ported to ModusToolbox.
 *
 * Related Document: See User Guide
 *
@@ -49,6 +49,7 @@
 #include "cybsp.h"
 #include "cy_utils.h"
 #include "xmc_common.h"
+#include "xmc_flash.h"
 
 // includes from DAVE init
 #include "CLOCK_XMC1/clock_xmc1.h"
@@ -67,36 +68,77 @@
 #include "BUS_IO/bus_io.h"
 #include "DIGITAL_IO/digital_io.h"
 
-#include "pwm_svm.h"
-
-// 6EDL and CAN includes
+// 6EDL, CORDIC, and CAN includes
 #include "math.h"
-#include "../6EDL7141/6EDL_gateway.h"
-#include "../Libraries/Constants.h"
-#include "../Libraries/Currents.h"
-#include <../Libraries/CAN/IMR_CAN.h>
+#include "6EDL_gateway.h"
+#include "Constants.h"
+#include "Currents.h"
+#include "DataTypes.h"
+#include "CORDIC_math.h"
+#include "IMR_CAN.h"
 
-// UART streaming for Serialplot
+// UART streaming for SerialPlot
 #include "DataStream.h"
 
 // user defines and global variables
 #include "user_defines.h"
 #include "global_variables.h"
-#include "DataTypes.h"
-#include "CORDIC_math.h"
-#include "xmc1_flash.h"
-#include "xmc_flash.h"
 
 #define NR_CALIB_STEPS 420
 #define NR_ROT_STEPS 10
 
 uint8_t rot_steps = 0; 
-uint16_t vtof_counter = 0;
+uint16_t vtof_counter = 0; //voltage-to-frequency control
 uint16_t calib_counter = 0;  
 uint16_t step_counter = 0; 
 int16_t angle_diff;
-uint16_t angle_array[NR_CALIB_STEPS];// = {0,208,316,460,596,752,948,1072,1204,1348,1600,1804,1932,2048,2184,2344,2500,2620,2760,2956,3296,3412,3524,3648,3824,4024,4148,4236,4336,4604,4872,4996,5116,5252,5452,5628,5736,5872,6068,6324,6456,6584,6704,6824,6992,7116,7244,7400,7636,7916,8040,8156,8280,8412,8580,8688,8784,8948,9248,9416,9528,9644,9788,10024,10160,10260,10384,10596,10864,10968,11080,11208,11368,11528,11636,11780,11944,12208,12408,12544,12668,12796,12940,13072,13184,13296,13484,13800,13908,14024,14148,14272,14496,14604,14700,14824,15104,15316,15424,15528,15660,15836,15976,16084,16236,16444,16756,16876,17020,17144,17264,17428,17552,17668,17796,18072,18304,18444,18576,18708,18940,19128,19240,19356,19560,19884,20000,20100,20212,20384,20616,20752,20872,21012,21296,21576,21700,21840,21984,22128,22288,22408,22548,22748,23036,23192,23360,23504,23664,23852,24004,24128,24264,24508,24796,24912,25012,25144,25340,25548,25668,25788,25972,26304,26516,26640,26776,26924,27084,27220,27332,27460,27700,27996,28124,28292,28428,28588,28788,28916,29056,29228,29484,29688,29812,29928,30064,30288,30444,30560,30688,30904,31276,31372,31480,31612,31752,31944,32068,32172,32288,32584,32796,32928,33068,33212,33376,33536,33652,33804,33992,34260,34384,34508,34628,34764,34952,35076,35204,35344,35612,35876,35984,36096,36228,36384,36548,36648,36744,36924,37256,37384,37512,37640,37772,37984,38108,38216,38356,38600,38824,38948,39068,39196,39384,39536,39652,39808,40000,40292,40456,40580,40704,40840,40992,41124,41220,41324,41544,41856,41960,42068,42200,42404,42608,42720,42836,43004,43256,43432,43544,43656,43792,44000,44128,44244,44404,44600,44900,45020,45156,45276,45384,45548,45664,45772,45908,46176,46380,46504,46616,46752,46916,47076,47172,47280,47480,47792,47896,47996,48116,48296,48488,48600,48720,48868,49152,49380,49520,49652,49776,49924,50068,50188,50320,50516,50824,50948,51092,51220,51420,51652,51780,51884,52012,52288,52548,52656,52752,52884,53068,53256,53376,53516,53724,54072,54212,54348,54488,54644,54824,54960,55084,55228,55488,55740,55880,56048,56192,56412,56612,56740,56872,57072,57364,57536,57648,57760,57912,58180,58332,58448,58576,58832,59184,59304,59428,59572,59712,59888,60004,60120,60284,60572,60772,60936,61088,61228,61428,61588,61716,61868,62076,62372,62492,62604,62724,62856,63060,63184,63304,63444,63756,64000,64108,64228,64368,64560,64708,64812,64924,65120,65448,20,160,300,460,660,788,920,1064,1308,1516,1644,1764,1896,2056,2204,2324,2468
-//};
+uint16_t angle_array[NR_CALIB_STEPS];
+/*
+uint16_t angle_array[NR_CALIB_STEPS] = {
+		0,208,316,460,596,752,948,1072,1204,1348,
+		1600,1804,1932,2048,2184,2344,2500,2620,2760,2956,
+		3296,3412,3524,3648,3824,4024,4148,4236,4336,4604,
+		4872,4996,5116,5252,5452,5628,5736,5872,6068,6324,
+		6456,6584,6704,6824,6992,7116,7244,7400,7636,7916,
+		8040,8156,8280,8412,8580,8688,8784,8948,9248,9416,
+		9528,9644,9788,10024,10160,10260,10384,10596,10864,10968,
+		11080,11208,11368,11528,11636,11780,11944,12208,12408,12544,
+		12668,12796,12940,13072,13184,13296,13484,13800,13908,14024,
+		14148,14272,14496,14604,14700,14824,15104,15316,15424,15528,
+		15660,15836,15976,16084,16236,16444,16756,16876,17020,17144,
+		17264,17428,17552,17668,17796,18072,18304,18444,18576,18708,
+		18940,19128,19240,19356,19560,19884,20000,20100,20212,20384,
+		20616,20752,20872,21012,21296,21576,21700,21840,21984,22128,
+		22288,22408,22548,22748,23036,23192,23360,23504,23664,23852,
+		24004,24128,24264,24508,24796,24912,25012,25144,25340,25548,
+		25668,25788,25972,26304,26516,26640,26776,26924,27084,27220,
+		27332,27460,27700,27996,28124,28292,28428,28588,28788,28916,
+		29056,29228,29484,29688,29812,29928,30064,30288,30444,30560,
+		30688,30904,31276,31372,31480,31612,31752,31944,32068,32172,
+		32288,32584,32796,32928,33068,33212,33376,33536,33652,33804,
+		33992,34260,34384,34508,34628,34764,34952,35076,35204,35344,
+		35612,35876,35984,36096,36228,36384,36548,36648,36744,36924,
+		37256,37384,37512,37640,37772,37984,38108,38216,38356,38600,
+		38824,38948,39068,39196,39384,39536,39652,39808,40000,40292,
+		40456,40580,40704,40840,40992,41124,41220,41324,41544,41856,
+		41960,42068,42200,42404,42608,42720,42836,43004,43256,43432,
+		43544,43656,43792,44000,44128,44244,44404,44600,44900,45020,
+		45156,45276,45384,45548,45664,45772,45908,46176,46380,46504,
+		46616,46752,46916,47076,47172,47280,47480,47792,47896,47996,
+		48116,48296,48488,48600,48720,48868,49152,49380,49520,49652,
+		49776,49924,50068,50188,50320,50516,50824,50948,51092,51220,
+		51420,51652,51780,51884,52012,52288,52548,52656,52752,52884,
+		53068,53256,53376,53516,53724,54072,54212,54348,54488,54644,
+		54824,54960,55084,55228,55488,55740,55880,56048,56192,56412,
+		56612,56740,56872,57072,57364,57536,57648,57760,57912,58180,
+		58332,58448,58576,58832,59184,59304,59428,59572,59712,59888,
+		60004,60120,60284,60572,60772,60936,61088,61228,61428,61588,
+		61716,61868,62076,62372,62492,62604,62724,62856,63060,63184,
+		63304,63444,63756,64000,64108,64228,64368,64560,64708,64812,
+		64924,65120,65448,20,160,300,460,660,788,920,
+		1064,1308,1516,1644,1764,1896,2056,2204,2324,2468
+		};
+		*/
 uint16_t angle_array_corrected[NR_CALIB_STEPS];
 uint16_t calib_buf_size = 0;
 uint16_t stepsize = 0;
@@ -109,14 +151,14 @@ uint32_t count;
 uint32_t errors_found;
 NVM_STATUS status;
 
-#define VTOF_RATIO PWM_FREQ_HZ/35
-
+#define VTOF_RATIO		PWM_FREQ_HZ/35
 #define NR_PAGES		4
-#define START_SECTOR	0x19		// 0x19 is used because this and the following addresses are not used yet.
+#define START_SECTOR	0x19	// 0x19 is used because this and the
+								// following addresses are not used yet.
 uint32_t flash_address = 0;
 uint32_t read_values_from_flash[XMC_FLASH_WORDS_PER_PAGE*4] = { 0 };
 
-/* ------ Functions declaration -----------------*/
+/* ------ Functions declaration ------------------*/
 void CrntFbk_FixedPoint_Init(void);
 void Motor_PrePositioning(void);
 void Motor_DetectRotation(void);
@@ -137,7 +179,8 @@ void CrntFbk_FixedPoint_Init(void)
 
 void Motor_PrePositioning(void)
 {
-	// set angle to zero degrees -> align with nearest north pole and define d-axis reference
+	// set angle to zero degrees ->
+	// align with nearest north pole and define d-axis reference
 	ThetaPwm_ANGLE = 0;
 	uint32_t ThetaPwm_U24 = (ThetaPwm_U16 << (Q24 - Q16)) & 0x00FFFFFF;
 
@@ -154,15 +197,21 @@ void Motor_PrePositioning(void)
 	// obtain angle at aligned position 
 	for (uint16_t i = 0U; i < 1000; i++)
 	{
-		theta_init = (XMC_CCU4_SLICE_GetCaptureRegisterValue(ENCODER_POSIF_0.position_counter_ptr->slice_ptr, (uint8_t) 1)) << 2;	// [pu] Q1.15 (-32768 ~ 32767 or 0 ~ 65535 for 0 ~ 360[deg])
+		// [per-unit] Q1.15 (-32768 ~ 32767 or 0 ~ 65535 for 0 ~ 360[deg])
+		theta_init =
+				(XMC_CCU4_SLICE_GetCaptureRegisterValue(
+						ENCODER_POSIF_0.position_counter_ptr->slice_ptr,
+						(uint8_t) 1)) << 2;
 	
 		//--- Raw feedbacks from ADC for the phase current measurement ---
 		MechanicalAngle_initial = theta_init;
 	}
 
-	MechanicalAngle_initial = theta_init; 								
-	ThetaMeRaw_U16_init = (uint16_t)(theta_init &0xFFFF);				// [pu] Q1.15 Motor shaft mechanical init position
-	ThetaReRaw_U16_init = (uint16_t)(ThetaMeRaw_U16_init*POLE_PAIR);	// [pu] Q1.15 Rotor magnet electrical init position
+	MechanicalAngle_initial = theta_init;
+	// [per-unit] Q1.15 Motor shaft mechanical init position
+	ThetaMeRaw_U16_init = (uint16_t)(theta_init &0xFFFF);
+	// [per-unit] Q1.15 Rotor magnet electrical init position
+	ThetaReRaw_U16_init = (uint16_t)(ThetaMeRaw_U16_init*POLE_PAIR);
 
 	// pre-position done
 	prepos_flag = TRUE;	
@@ -178,16 +227,22 @@ void Motor_DetectRotation(void)
 	else
 	{
 		ThetaPwm_ANGLE += DELTA_ANGLE;
-		uint32_t ThetaPwm_U24 = (ThetaPwm_ANGLE << (Q24 - Q16)) & 0x00FFFFFF;
+		uint32_t ThetaPwm_U24 =
+				(ThetaPwm_ANGLE << (Q24 - Q16)) & 0x00FFFFFF;
 		PWM_SVM_SVMUpdate(&PWM_SVM_0, 2000, ThetaPwm_U24);
 
 		if (vtof_counter >= VTOF_RATIO)
 		{
 			uint32_t theta;
-			theta = (XMC_CCU4_SLICE_GetCaptureRegisterValue(ENCODER_POSIF_0.position_counter_ptr->slice_ptr, (uint8_t) 1)) << 2;	// [pu] Q1.15 (-32768 ~ 32767 or 0 ~ 65535 for 0 ~ 360[deg])
-			MechanicalAngle = theta;
+			// [per-unit] Q1.15 (-32768 ~ 32767 or 0 ~ 65535 for 0 ~ 360[deg])
+			theta =
+					(XMC_CCU4_SLICE_GetCaptureRegisterValue(
+							ENCODER_POSIF_0.position_counter_ptr->slice_ptr,
+							(uint8_t) 1)) << 2;
 
-			angle_array[step_counter] = MechanicalAngle - MechanicalAngle_initial; 
+			MechanicalAngle = theta;
+			angle_array[step_counter] = MechanicalAngle -
+										MechanicalAngle_initial;
 
 			vtof_counter = 0; 
 			step_counter += 1; 
@@ -195,9 +250,10 @@ void Motor_DetectRotation(void)
 
 		if (step_counter >= NR_ROT_STEPS)
 		{
-			angle_diff = angle_array[step_counter-1] - angle_array[step_counter-2];
+			angle_diff = angle_array[step_counter-1] -
+					angle_array[step_counter-2];
 
-			// If angle difference is negativ, swap phases
+			// If angle difference is negative, swap phases
 			if (angle_diff < 0)
 			{	
 				PWM_SVM_0.phasev_crs = (uint32_t *)&CCU80_CC80->CR1S;
@@ -236,10 +292,14 @@ void Motor_EncoderCalibration(void)
 		if (vtof_counter >= VTOF_RATIO)
 		{
 			uint32_t theta;
-			theta = (XMC_CCU4_SLICE_GetCaptureRegisterValue(ENCODER_POSIF_0.position_counter_ptr->slice_ptr, (uint8_t) 1)) << 2;	// [pu] Q1.15 (-32768 ~ 32767 or 0 ~ 65535 for 0 ~ 360[deg])
+			// [per-unit] Q1.15 (-32768 ~ 32767 or 0 ~ 65535 for 0 ~ 360[deg])
+			theta = (XMC_CCU4_SLICE_GetCaptureRegisterValue(
+					ENCODER_POSIF_0.position_counter_ptr->slice_ptr,
+					(uint8_t) 1)) << 2;
 			MechanicalAngle = theta;
 
-			angle_array[step_counter] = MechanicalAngle - MechanicalAngle_initial; 
+			angle_array[step_counter] = MechanicalAngle -
+										MechanicalAngle_initial;
 		
 			if (angle_array[step_counter] < angle_array[step_counter-1])
 			{
@@ -265,20 +325,23 @@ void Motor_EncoderCalibration(void)
 
 void Data_LoadFromFlash(void)
 {
-	
 	flash_address = XMC_FLASH_GetSectorAddress(START_SECTOR);
 
 	ptr_flash_data = (uint8_t*) flash_address;
 	for (count = 0; count < sizeof(read_values_from_flash); ++count) {
-		read_values_from_flash[count] = *ptr_flash_data | (*(ptr_flash_data+1) << 8) | (*(ptr_flash_data+2) << 16) | (*(ptr_flash_data+3) << 24);
+		read_values_from_flash[count] =
+				*ptr_flash_data | (*(ptr_flash_data+1) << 8) |
+				(*(ptr_flash_data+2) << 16) | (*(ptr_flash_data+3) << 24);
 		ptr_flash_data += 4;
 	}
-	for (count = 0; count < sizeof(angle_array)/2; count++) {
-		//angle_array[count*2] = read_values_from_flash[count] & 0x0000ffff;
-		//angle_array[count*2+1] = (read_values_from_flash[count] & 0xffff0000) >> 16;
+	/*for (count = 0; count < sizeof(angle_array)/2; count++) {
+		angle_array[count*2] = read_values_from_flash[count] & 0x0000ffff;
+		angle_array[count*2+1] =
+				(read_values_from_flash[count] & 0xffff0000) >> 16;
 	}
-	//stepsize = read_values_from_flash[210] & 0x0000ffff;
-	//calib_buf_size = (read_values_from_flash[210] & 0xffff0000) >> 16;
+	stepsize = read_values_from_flash[210] & 0x0000ffff;
+	calib_buf_size = (read_values_from_flash[210] & 0xffff0000) >> 16;*/
+
 	MechanicalAngle_initial = read_values_from_flash[211] & 0x0000ffff;
 
 	rotation_detect_flag = TRUE;
@@ -288,8 +351,6 @@ void Data_LoadFromFlash(void)
 	step_counter = 0;
 
 	//Motor_PrePositioning();
-
-
 }
 
 void Data_SaveToFlash(void)
@@ -299,8 +360,9 @@ void Data_SaveToFlash(void)
 	for (uint8_t j = 0; j < 4; j++){
 		for (uint16_t i = 0; i < XMC_FLASH_WORDS_PER_PAGE; i++)
 		{
-			//page[i] = angle_array[((i+(XMC_FLASH_WORDS_PER_PAGE * j))*2)];
-			//page[i] |= angle_array[((i+(XMC_FLASH_WORDS_PER_PAGE * j))*2)+1] << 16;
+			/*page[i] = angle_array[((i+(XMC_FLASH_WORDS_PER_PAGE * j))*2)];
+			page[i] |= angle_array[((i+(XMC_FLASH_WORDS_PER_PAGE * j))*2)+1]
+								   << 16;*/
 			if(((i+(XMC_FLASH_WORDS_PER_PAGE * j))*2) > NR_CALIB_STEPS+2) {
 				//page[i] = 0;
 			} else if(((i+(XMC_FLASH_WORDS_PER_PAGE * j))*2) == NR_CALIB_STEPS){
@@ -309,8 +371,9 @@ void Data_SaveToFlash(void)
 				page[i] = MechanicalAngle_initial;
 			}
 		}
+		//0x1001a000 - 0x1001a3ff
+		flash_address = XMC_FLASH_GetSectorAddress(START_SECTOR) + (j<<8);
 
-		flash_address = XMC_FLASH_GetSectorAddress(START_SECTOR) + (j<<8);		//0x1001a000 - 0x1001a3ff
 		status = XMC_FLASH_GetStatus();
 		status = XMC_FLASH_EraseSector(&flash_address);
 		status = XMC_FLASH_ProgramPage(&flash_address, page);
@@ -333,190 +396,229 @@ void Data_SaveToFlash(void)
 
 __RAM_FUNC void ControlLoop_FixedPoint(void)
 {
-		//--------------------------------------------------------------------
-		//--- Position feedback interface
-		//---  1) Motor shaft Mechanical position (ThetaMe_RAW):
-		//---   	Source from 12bit emulated encoder and x4 quadratic is taken
-		//---   	Take an additional x4 to make 16bit Position
-		//---  2) Rotor magnet Electrical position (ThetaRe_RAW):
-		//---       ThetaRe_RAW = ThetaMe_RAW x PolePair
-		//--------------------------------------------------------------------
+	//--------------------------------------------------------------------
+	//--- Position feedback interface
+	//---  1) Motor shaft Mechanical position (ThetaMe_RAW):
+	//---     Source from 12bit emulated encoder and x4 quadratic is taken
+	//---     Take an additional x4 to make 16bit Position
+	//---  2) Rotor magnet Electrical position (ThetaRe_RAW):
+	//---     ThetaRe_RAW = ThetaMe_RAW x PolePair
+	//--------------------------------------------------------------------
 
-		uint32_t theta;
-		uint16_t MechanicalAngleLocal;
+	uint32_t theta;
+	uint16_t MechanicalAngleLocal;
 
-		theta = (XMC_CCU4_SLICE_GetCaptureRegisterValue(ENCODER_POSIF_0.position_counter_ptr->slice_ptr, (uint8_t) 1)) << 2;	// [pu] Q1.15 (-32768 ~ 32767 or 0 ~ 65535 for 0 ~ 360[deg])
-		MechanicalAngleLocal = theta;
+	// [per-unit] Q1.15 (-32768 ~ 32767 or 0 ~ 65535 for 0 ~ 360[deg])
+	theta = (XMC_CCU4_SLICE_GetCaptureRegisterValue(
+			ENCODER_POSIF_0.position_counter_ptr->slice_ptr,
+			(uint8_t) 1)) << 2;
+	MechanicalAngleLocal = theta;
 
-		// compensate offset angle from measured sensor output
-		if ((MechanicalAngleLocal >= MechanicalAngle_initial) && (MechanicalAngleLocal <= MAX_INT))
-		{
-			MechanicalAngle = (MechanicalAngleLocal - MechanicalAngle_initial);
-		}
-		else if (MechanicalAngleLocal < MechanicalAngle_initial)
-		{
-			MechanicalAngle = (MAX_INT - MechanicalAngle_initial) + MechanicalAngleLocal;
-		}
+	// compensate offset angle from measured sensor output
+	if ((MechanicalAngleLocal >= MechanicalAngle_initial) &&
+			(MechanicalAngleLocal <= MAX_INT))
+	{
+		MechanicalAngle = (MechanicalAngleLocal - MechanicalAngle_initial);
+	}
+	else if (MechanicalAngleLocal < MechanicalAngle_initial)
+	{
+		MechanicalAngle = (MAX_INT - MechanicalAngle_initial) +
+				MechanicalAngleLocal;
+	}
 
-		// retrieve LUT index based on current angle
-		//uint16_t angle_idx;
-		//int16_t angle_error;
-		//angle_idx = (MechanicalAngle * calib_buf_size) / (uint16_t)(calib_buf_size*stepsize);
+	// retrieve LUT index based on current angle
+	/*uint16_t angle_idx;
+	int16_t angle_error;
+	angle_idx = (MechanicalAngle * calib_buf_size) /
+				(uint16_t)(calib_buf_size*stepsize);
 		
-		// compute the angle error based on LUT data and correct 
-		//angle_error = angle_array[angle_idx] - stepsize*angle_idx; 
-		//MechanicalAngle = MechanicalAngle - angle_error;
+	// compute the angle error based on LUT data and correct
+	angle_error = angle_array[angle_idx] - stepsize*angle_idx;
+	MechanicalAngle = MechanicalAngle - angle_error; */
 
-		ThetaMeRaw_U16 = (uint16_t)((MechanicalAngle) & 0xFFFF);	// [pu] Q1.15 Motor shaft mechanical position
-		ThetaReRaw_U16 = (uint16_t)(ThetaMeRaw_U16*POLE_PAIR);	// [pu] Q1.15 Rotor magnet electrical position
+	// [per-unit] Q1.15 Motor shaft mechanical position
+	ThetaMeRaw_U16 = (uint16_t)((MechanicalAngle) & 0xFFFF);
+	// [per-unit] Q1.15 Rotor magnet electrical position
+	ThetaReRaw_U16 = (uint16_t)(ThetaMeRaw_U16*POLE_PAIR);
 
-		// check if the valid initial number of POSIF sampling has been taken
-		if (POSIF_ValidInitSmplFg == 0)
+	// check if the valid initial number of POSIF sampling has been taken
+	if (POSIF_ValidInitSmplFg == 0)
+	{
+		if (++POSIF_ValidInitSmplCnt >= POSIF_INIT_SMPL_CNT)
 		{
-			if (++POSIF_ValidInitSmplCnt >= POSIF_INIT_SMPL_CNT)
-			{
-				POSIF_ValidInitSmplFg = 1;
-			}
-			else
-			{
-				return;
-			}
-		}
-
-		//-------------------------------------------------------
-		//--- Speed Measurement By M-Method using ThetaMeRaw
-		//-------------------------------------------------------
-		static int16_t TickSpdMeas = 0;
-		if (++TickSpdMeas >= TICK_SPD_CTRL_PRD_BY_TASK0)
-		{
-			TickSpdMeas   = 0;
-			dThetaMeRaw_S16   = (int16_t)(ThetaMeRaw_U16 - ThetaMeRawOld_U16);	// [pu] Q1.15
-			ThetaMeRawOld_U16 = ThetaMeRaw_U16;									// [pu] Q1.15
-
-			dThetaMeRawMovAvgSum += (q_t)dThetaMeRaw_S16;
-			dThetaMeRawMovAvgBuf[dThetaMeRaw_head++] = (q_t)dThetaMeRaw_S16;
-			if (dThetaMeRaw_head >= dThetaMeRaw_MOV_AVG_SIZE) dThetaMeRaw_head = 0;
-			dThetaMeRawMovAvgSum -= dThetaMeRawMovAvgBuf[dThetaMeRaw_head];
-			dThetaMeRawFltd       = dThetaMeRawMovAvgSum >> N_SHFT_dThetaMeRaw_MOV_AVG;	// log2(dThetaMeRaw_MOV_AVG_SIZE) ==> BW = 2kHz / 32 = 62.5[Hz]
-			OmegaMeFltd 		  = IFX_Q_mul(dThetaMeRawFltd, dTHETA_PU_2_OMEGA_PU);	// [pu]
-			RpmFltd               = IFX_Q_mul(OmegaMeFltd, ((q_t)RPM_BASE));			// [rpm]
-			EncoderSpeed          = (int16_t)(RpmFltd * 2*PI / 60.0 * RADPS2_15BIT);	// [rad/s] as spaced out to 15 bit
-			SpdCtrlPrdFg = 1;
+			POSIF_ValidInitSmplFg = 1;
 		}
 		else
 		{
-			SpdCtrlPrdFg = 0;
+			return;
 		}
+	}
 
-		// compute the necessary SIN and COS value for reference frame transformation
-		Get_CosSin_Q12(ThetaReRaw_U16, &Cos_Q12, &Sin_Q12);
+	//-------------------------------------------------------
+	//--- Speed Measurement By M-Method using ThetaMeRaw
+	//-------------------------------------------------------
+	static int16_t TickSpdMeas = 0;
+	if (++TickSpdMeas >= TICK_SPD_CTRL_PRD_BY_TASK0)
+	{
+		TickSpdMeas   = 0;
+		dThetaMeRaw_S16 = (int16_t)(ThetaMeRaw_U16 -
+									ThetaMeRawOld_U16); // [per-unit] Q1.15
+		ThetaMeRawOld_U16 = ThetaMeRaw_U16;	// [per-unit] Q1.15
 
-		// if phases are swapped, also swap current readings for correct control 	
-		if (phase_swapped == TRUE)
-		{
-			ADC_RAW.Iu = -(ADC_RAW.Iu_ofst - ADC_MEASUREMENT_GetResult(&ADC_MEASUREMENT_Channel_A));	// [cnt] Q11: -2048 ~ 2047
-			ADC_RAW.Iv = -(ADC_RAW.Iw_ofst - ADC_MEASUREMENT_GetResult(&ADC_MEASUREMENT_Channel_C));	// [cnt] Q11: -2048 ~ 2047
-			ADC_RAW.Iw = -(ADC_RAW.Iv_ofst - ADC_MEASUREMENT_GetResult(&ADC_MEASUREMENT_Channel_B));	// [cnt] Q11: -2048 ~ 2047
-		}
-		else
-		{
-			ADC_RAW.Iu = -(ADC_RAW.Iu_ofst - ADC_MEASUREMENT_GetResult(&ADC_MEASUREMENT_Channel_A));	// [cnt] Q11: -2048 ~ 2047
-			ADC_RAW.Iv = -(ADC_RAW.Iv_ofst - ADC_MEASUREMENT_GetResult(&ADC_MEASUREMENT_Channel_B));	// [cnt] Q11: -2048 ~ 2047
-			ADC_RAW.Iw = -(ADC_RAW.Iw_ofst - ADC_MEASUREMENT_GetResult(&ADC_MEASUREMENT_Channel_C));	// [cnt] Q11: -2048 ~ 2047
-		}
+		dThetaMeRawMovAvgSum += (q_t)dThetaMeRaw_S16;
+		dThetaMeRawMovAvgBuf[dThetaMeRaw_head++] = (q_t)dThetaMeRaw_S16;
 
-		//--- Normalized current in fixed point format: Iabc, Ialphabeta, Idq ---
-		Iabc.a = IFX_Q_mul_n((q_t)ADC_RAW.Iu, ADC_I_MEAS_TO_PU, ADC_RESOLUTION);	// [pu] Qxx
-		Iabc.b = IFX_Q_mul_n((q_t)ADC_RAW.Iv, ADC_I_MEAS_TO_PU, ADC_RESOLUTION); 	// [pu] Qxx
-		Iabc.c = IFX_Q_mul_n((q_t)ADC_RAW.Iw, ADC_I_MEAS_TO_PU, ADC_RESOLUTION); 	// [pu] Qxx
+		if (dThetaMeRaw_head >= dThetaMeRaw_MOV_AVG_SIZE)
+			dThetaMeRaw_head = 0;
 
-		ABCToAlphaBeta(Iabc.a, Iabc.b, Iabc.c, &Ialphabeta.alpha, &Ialphabeta.beta);
-		AlphaBetaToDQ(Ialphabeta.alpha, Ialphabeta.beta, Cos_Q12, Sin_Q12, &Idq.d, &Idq.q);
+		dThetaMeRawMovAvgSum -= dThetaMeRawMovAvgBuf[dThetaMeRaw_head];
 
-		//--------------------------------------------------------------------------
-		//--- Speed Reference from CAN ==> Renormalized with respect to RPM_BASE
-		//--- Run Speed Control
-		//---	PI_Contr(CAN_speed_ref, Speed_averaged, 0, &PI_speed);
-		//--------------------------------------------------------------------------
-		if (SpdCtrlPrdFg)
-		{
-			RpmRefPu = (q_t)CAN_speed_ref*IFX_Q(1/RPM_BASE);	// [pu] Speed command unit normalized wrt -100 ~ 100 ==> -439.453 ~ 439.453 [rpm]
-			SpdCtrl.ref = RpmRefPu;
-			SpdCtrl.fbk = OmegaMeFltd;		// [pu] Speed feedback from M-method
-			PI_Ctrl_Inline(&SpdCtrl);
-		}
+		// log2(dThetaMeRaw_MOV_AVG_SIZE) ==> BW = 2kHz / 32 = 62.5[Hz]
+		dThetaMeRawFltd = dThetaMeRawMovAvgSum >> N_SHFT_dThetaMeRaw_MOV_AVG;
+		OmegaMeFltd	= IFX_Q_mul(dThetaMeRawFltd, dTHETA_PU_2_OMEGA_PU);
+		RpmFltd	= IFX_Q_mul(OmegaMeFltd, ((q_t)RPM_BASE)); // [rpm]
 
-		//--------------------------------------------------------------------------
-		//--- Current Control
-		//--- IdRef = 0 [pu]
-		//--- IqRef = SpdCtrl.Out [pu]
-		//--------------------------------------------------------------------------
-		IdCtrl.ref = 0;
-		IdCtrl.fbk = Idq.d;
-		PI_Ctrl_Inline(&IdCtrl);
+		// [rad/s] as spaced out to 15 bit
+		EncoderSpeed = (int16_t)(RpmFltd * 2*PI / 60.0 * RADPS2_15BIT);
+		SpdCtrlPrdFg = 1;
+	}
+	else
+	{
+		SpdCtrlPrdFg = 0;
+	}
 
-		IqCtrl.ref = SpdCtrl.Out;
-		IqCtrl.fbk = Idq.q;
-		PI_Ctrl_Inline(&IqCtrl);
+	// compute the necessary SIN and COS value
+	// for reference frame transformation
+	Get_CosSin_Q12(ThetaReRaw_U16, &Cos_Q12, &Sin_Q12);
 
-		q_t ThetaPwm_Q15 = ThetaReRaw_U16;
-		MIcmd = CORDIC_Q_mag_atan2(IdCtrl.Out, IqCtrl.Out, &ThetaPwm_Q15);				// 'ThetaPwm_Q15' is updated to voltage angle from the reference frame angle.
-		ThetaPwm_U16 = (uint16_t)ThetaPwm_Q15;
-		if (MIcmd > IFX_Q(1.0f))	MIcmd = IFX_Q(1.0f);
+	// if phases are swapped, also swap current readings for correct control
+	if (phase_swapped == TRUE)
+	{
+		// for all ADC_RAW.I unit: [count] Q11: -2048 ~ 2047
+		ADC_RAW.Iu = -(ADC_RAW.Iu_ofst -
+				ADC_MEASUREMENT_GetResult(&ADC_MEASUREMENT_Channel_A));
+		ADC_RAW.Iv = -(ADC_RAW.Iw_ofst -
+				ADC_MEASUREMENT_GetResult(&ADC_MEASUREMENT_Channel_C));
+		ADC_RAW.Iw = -(ADC_RAW.Iv_ofst -
+				ADC_MEASUREMENT_GetResult(&ADC_MEASUREMENT_Channel_B));
+	}
+	else
+	{
+		ADC_RAW.Iu = -(ADC_RAW.Iu_ofst -
+				ADC_MEASUREMENT_GetResult(&ADC_MEASUREMENT_Channel_A));
+		ADC_RAW.Iv = -(ADC_RAW.Iv_ofst -
+				ADC_MEASUREMENT_GetResult(&ADC_MEASUREMENT_Channel_B));
+		ADC_RAW.Iw = -(ADC_RAW.Iw_ofst -
+				ADC_MEASUREMENT_GetResult(&ADC_MEASUREMENT_Channel_C));
+	}
 
-		uint16_t MIcmdOut_U16 = (uint16_t)(int16_t)IFX_Q_mul(MIcmd, PWM_PRD_REG_VAL);	// [cnt] PWM count (0~2399) corresponding to MI
-		uint32_t ThetaPwm_U24 = (ThetaPwm_U16 << (Q24 - Q16)) & 0x00FFFFFF;
+	// Normalized current in fixed point format:
+	// Iabc, Ialphabeta, Idq. All has unit [per-unit] Qxx
+	Iabc.a = IFX_Q_mul_n((q_t)ADC_RAW.Iu, ADC_I_MEAS_TO_PU, ADC_RESOLUTION);
+	Iabc.b = IFX_Q_mul_n((q_t)ADC_RAW.Iv, ADC_I_MEAS_TO_PU, ADC_RESOLUTION);
+	Iabc.c = IFX_Q_mul_n((q_t)ADC_RAW.Iw, ADC_I_MEAS_TO_PU, ADC_RESOLUTION);
 
-		XMC_GPIO_SetOutputHigh(GPIO_nBRAKE);
-		PWM_SVM_SVMUpdate(&PWM_SVM_0, MIcmdOut_U16, ThetaPwm_U24);
+	ABCToAlphaBeta(Iabc.a, Iabc.b, Iabc.c,
+			&Ialphabeta.alpha, &Ialphabeta.beta);
+	AlphaBetaToDQ(Ialphabeta.alpha, Ialphabeta.beta,
+			Cos_Q12, Sin_Q12, &Idq.d, &Idq.q);
+
+	//-----------------------------------------------------------
+	//--- Speed Reference from CAN ==>
+	// 		Renormalized with respect to RPM_BASE
+	//--- Run Speed Control
+	//--- PI_Contr(CAN_speed_ref, Speed_averaged, 0, &PI_speed);
+	//-----------------------------------------------------------
+	if (SpdCtrlPrdFg)
+	{
+		// [per-unit] Speed command unit normalized wrt -100 ~ 100
+		// ==> -439.453 ~ 439.453 [rpm]
+		RpmRefPu = (q_t)CAN_speed_ref*IFX_Q(1/RPM_BASE);
+		SpdCtrl.ref = RpmRefPu;
+		SpdCtrl.fbk = OmegaMeFltd;	// [per-unit] Speed feedback from M-method
+		PI_Ctrl_Inline(&SpdCtrl);
+	}
+
+	//-----------------------------------------------------------
+	//--- Current Control
+	//--- IdRef = 0 [per-unit]
+	//--- IqRef = SpdCtrl.Out [per-unit]
+	//-----------------------------------------------------------
+	IdCtrl.ref = 0;
+	IdCtrl.fbk = Idq.d;
+	PI_Ctrl_Inline(&IdCtrl);
+
+	IqCtrl.ref = SpdCtrl.Out;
+	IqCtrl.fbk = Idq.q;
+	PI_Ctrl_Inline(&IqCtrl);
+
+	q_t ThetaPwm_Q15 = ThetaReRaw_U16;
+	// 'ThetaPwm_Q15' is updated to voltage angle
+	// from the reference frame angle.
+	MIcmd = CORDIC_Q_mag_atan2(IdCtrl.Out, IqCtrl.Out, &ThetaPwm_Q15);
+	ThetaPwm_U16 = (uint16_t)ThetaPwm_Q15;
+	if (MIcmd > IFX_Q(1.0f))
+		MIcmd = IFX_Q(1.0f);
+
+	// [count] PWM count (0~2399) corresponding to MI
+	uint16_t MIcmdOut_U16 = (uint16_t)
+							(int16_t)IFX_Q_mul(MIcmd, PWM_PRD_REG_VAL);
+	uint32_t ThetaPwm_U24 = (ThetaPwm_U16 << (Q24 - Q16)) & 0x00FFFFFF;
+
+	XMC_GPIO_SetOutputHigh(GPIO_nBRAKE);
+	PWM_SVM_SVMUpdate(&PWM_SVM_0, MIcmdOut_U16, ThetaPwm_U24);
 }
 
 void ControlLoop_FixedPointInit(void)
 {
-	POSIF_ValidInitSmplFg = 0;		// Mark that the valid POSIF sampling NOT takes place.
-	InitPI_Ctrl(&SpdCtrl, Kp_SPD_CTRL_PU, 0, Ka_SPD_CTRL_PU, OUT_SPD_CTRL_MIN_PU, OUT_SPD_CTRL_MAX_PU);
-	InitPI_Ctrl(&IdCtrl, KpD_PU, KiD_PU, KaD_PU, OUT_CRNT_CTRL_MIN_PU, OUT_CRNT_CTRL_MAX_PU);
-	InitPI_Ctrl(&IqCtrl, KpQ_PU, KiQ_PU, KaQ_PU, OUT_CRNT_CTRL_MIN_PU, OUT_CRNT_CTRL_MAX_PU);
+	// Mark that the valid POSIF sampling NOT takes place.
+	POSIF_ValidInitSmplFg = 0;
+
+	InitPI_Ctrl(&SpdCtrl, Kp_SPD_CTRL_PU, 0, Ka_SPD_CTRL_PU,
+			OUT_SPD_CTRL_MIN_PU, OUT_SPD_CTRL_MAX_PU);
+	InitPI_Ctrl(&IdCtrl, KpD_PU, KiD_PU, KaD_PU,
+			OUT_CRNT_CTRL_MIN_PU, OUT_CRNT_CTRL_MAX_PU);
+	InitPI_Ctrl(&IqCtrl, KpQ_PU, KiQ_PU, KaQ_PU,
+			OUT_CRNT_CTRL_MIN_PU, OUT_CRNT_CTRL_MAX_PU);
 }
 
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------
+//-------------------------------------------------------------------
 //---
 //---
 //--- Timer ISR calling the corresponding data representation
+//--- SVM Period Match for Control Loop @ 20kHz
 //---
-//---
-//----------------------------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------------------------
-void Timer_Control_Loop(void)		// SVM Period Match for Control Loop @ 20kHz
+//-------------------------------------------------------------------
+//-------------------------------------------------------------------
+void Timer_Control_Loop(void)
 {
+	if ((rotation_detect_flag == FALSE) && (encoder_calib_flag == FALSE))
+	{
+		Motor_DetectRotation();
+	}
+	else if ((rotation_detect_flag == TRUE) && (encoder_calib_flag == FALSE))
+	{
+		//Motor_EncoderCalibration();
+		encoder_calib_flag = TRUE;
+		prepos_flag = TRUE;
+		step_counter = 0;
+		ThetaPwm_U16 = 0;
+	}
+	else
+	{
+		ControlLoop_FixedPoint();
+	}
+	if (can_calibration_flag == TRUE) {
+		rotation_detect_flag = FALSE;
+		encoder_calib_flag = FALSE;
+		prepos_flag = FALSE;
+		ThetaPwm_U16 = 0;
+		step_counter = 0;
+		can_calibration_flag = FALSE;
+	}
 
-		if ((rotation_detect_flag == FALSE) && (encoder_calib_flag == FALSE))
-		{
-			Motor_DetectRotation();		
-		}
-		else if ((rotation_detect_flag == TRUE) && (encoder_calib_flag == FALSE))
-		{
-			//Motor_EncoderCalibration();
-			encoder_calib_flag = TRUE;
-			prepos_flag = TRUE;
-			step_counter = 0;
-			ThetaPwm_U16 = 0;
-		}
-		else
-		{
-			ControlLoop_FixedPoint();
-		}
-		if (can_calibration_flag == TRUE) {
-			rotation_detect_flag = FALSE;
-			encoder_calib_flag = FALSE;
-			prepos_flag = FALSE;
-			ThetaPwm_U16 = 0;
-			step_counter = 0;
-			can_calibration_flag = FALSE;
-		}
-
-		//ControlLoop_FixedPoint();
+	//ControlLoop_FixedPoint();
 }
 
 
@@ -524,15 +626,17 @@ void Timer_Control_Loop(void)		// SVM Period Match for Control Loop @ 20kHz
  * @brief main() - Application entry point
  *
  * <b>Details of function</b><br>
- * This routine is the application entry point. It is invoked by the device startup code. It is responsible for
- * invoking the APP initialization dispatcher routine - DAVE_Init() and hosting the place-holder for user application
- * code.
+ * This routine is the application entry point.
+ * It is invoked by the device startup code.
+ * It is responsible for invoking
+ * the APP initialization dispatcher routine - DAVE_Init()
+ * and hosting the place-holder for user application code.
  */
 int main(void) 
 {
-
 	//MechanicalAngle_initial = 58756;
 	//stepsize = angle_array[calib_buf_size] / calib_buf_size;
+
 	// Initialize the device and board peripherals
 	cybsp_init();
 
@@ -557,9 +661,9 @@ int main(void)
 	// Initializes systick at 1ms - this will start the state machine interrupt
 	SystemVar.GlobalTimer = 0;
 
-	/*Setting all relevant registers of the IMD701A internal 3-phase driver via SPI
-	* for calibrating the offset current via averaging. Hereby entering a special
-	* calibration mode.*/
+	/*Setting all relevant registers of the IMD701A internal 3-phase driver
+	 * via SPI for calibrating the offset current via averaging.
+	 * Hereby entering a special calibration mode.*/
 	init_currents(&i);
 
 	// Initialize the current feedback for the fixed point control system
@@ -569,8 +673,11 @@ int main(void)
 	CAN_Initialize();
 
 	// Reset all parameters of the internal three-phase driver
-	EDL7141_FLASH_parameter_load();		/* load 6EDL7141 parameter from flash, set Edl7141Configured to 1 if load was succeed */
-	EDL7141_Config_init();				/* Initialize SPI interface with 6EDL7141, and 6EDL7141 related IO */
+	/* load 6EDL7141 parameter from flash,
+	 * set Edl7141Configured to 1 if load was succeed */
+	EDL7141_FLASH_parameter_load();
+	/* Initialize SPI interface with 6EDL7141, and 6EDL7141 related IO */
+	EDL7141_Config_init();
 
 	// Delay for not powering up during BMS pre-charge
 	for(uint64_t i = 0U; i < 5000000; i++)
@@ -581,10 +688,12 @@ int main(void)
 	// Enable POSIF Interface
 	ENCODER_POSIF_Start(&ENCODER_POSIF_0);
 
-	// Initialize the control loop for fixed point control system right before Task0 Timer ISR initiated to start
+	// Initialize the control loop for fixed point control system
+	// right before Task0 Timer ISR initiated to start
 	ControlLoop_FixedPointInit();
 
-	// Loading angle_array from flash (If you want to calibrate on startup, comment this line)
+	// Loading angle_array from flash:
+	// If you want to calibrate on startup, comment this line
 	//Data_LoadFromFlash();
 
 	for (uint32_t i = 0; i < 200000; i++)
@@ -598,7 +707,8 @@ int main(void)
 	// Start main control loop
 	TIMER_Start(&TIMER_0);
 
-	/* Placeholder for user application code. The while loop below can be replaced with user application code. */
+	/* Placeholder for user application code.
+	 * The while loop below can be replaced with user application code. */
 	while(1U)
 	{
 		

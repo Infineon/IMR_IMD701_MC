@@ -31,13 +31,16 @@
 ******************************************************************************/
 
 #include "IMR_CAN.h"
+#include "xmc_can.h"
 
 uint32_t XMC_CAN_MO_Busy(XMC_CAN_MO_t* mo_ptr) {
-	return (XMC_CAN_MO_GetStatus(mo_ptr) & CAN_MO_MOSTAT_TXRQ_Msk) >> CAN_MO_MOSTAT_TXRQ_Pos;
+	return (XMC_CAN_MO_GetStatus(mo_ptr) &
+			CAN_MO_MOSTAT_TXRQ_Msk) >> CAN_MO_MOSTAT_TXRQ_Pos;
 }
 
-CAN_STATUS_t CAN_TX_Request(uint32_t CAN_ID, uint8_t* Target_Data, uint8_t Target_Data_Length) {
-	uint32_t CAN_TimeOut = 0;			// Implement TimeOut feature to prevent CAN messages getting stuck on the CAN bus with no recipient - TimeOut can be defined in IMR2_CAN.h
+CAN_STATUS_t CAN_TX_Request(uint32_t CAN_ID, uint8_t* Target_Data,
+		uint8_t Target_Data_Length) {
+	uint32_t CAN_TimeOut = 0;
 	while (XMC_CAN_MO_Busy(&CAN_NODE_TRANSMIT_LMO_NAME)) {
 		CAN_TimeOut++;
 
@@ -46,23 +49,35 @@ CAN_STATUS_t CAN_TX_Request(uint32_t CAN_ID, uint8_t* Target_Data, uint8_t Targe
 			return XMC_CAN_STATUS_BUSY;
 		}
 	}
-
-	XMC_CAN_MO_SetIdentifier(&CAN_NODE_TRANSMIT_LMO_NAME, CAN_ID);				// Set CAN ID of message recipient
-
-	XMC_CAN_MO_SetDataLengthCode(&CAN_NODE_TRANSMIT_LMO_NAME, Target_Data_Length);		// Set Data Length Code (DLC) to amount of transmit bytes
+	// Set CAN ID of message recipient
+	XMC_CAN_MO_SetIdentifier(&CAN_NODE_TRANSMIT_LMO_NAME, CAN_ID);
+	// Set Data Length Code (DLC) to amount of transmit bytes
+	XMC_CAN_MO_SetDataLengthCode(&CAN_NODE_TRANSMIT_LMO_NAME,
+			Target_Data_Length);
 	CAN_NODE_TRANSMIT_LMO_NAME.can_data_length = Target_Data_Length;
-	for (uint16_t i = 0; i < Target_Data_Length; i++)								// Transfer transmit message bytes into CAN data structure
+	// Transfer transmit message bytes into CAN data structure
+	for (uint16_t i = 0; i < Target_Data_Length; i++)
 		CAN_NODE_TRANSMIT_LMO_NAME.can_data_byte[i] = Target_Data[i];
 
 	CAN_STATUS_t status = CAN_SUCCESS;
-	status = XMC_CAN_MO_UpdateData(&CAN_NODE_TRANSMIT_LMO_NAME);    		// Update CAN Node data with bytes from CAN data structure
-	if (status != XMC_CAN_STATUS_SUCCESS) return status;					// Check for success on data update
+	XMC_CAN_STATUS_t xmc_status = XMC_CAN_STATUS_SUCCESS;
 
-	status = XMC_CAN_MO_Transmit(&CAN_NODE_TRANSMIT_LMO_NAME);    			// Send previously updated data using designed CAN node object
-	if (status != XMC_CAN_STATUS_SUCCESS) return status;					// Check for success on data transmit
-
-	return CAN_SUCCESS;
+	// Update CAN Node data with bytes from CAN data structure
+	xmc_status = XMC_CAN_MO_UpdateData(&CAN_NODE_TRANSMIT_LMO_NAME);
+	// Check for success on data update
+	if (xmc_status != XMC_CAN_STATUS_SUCCESS){
+		status = xmc_status;
+		return status;
+	}
+	// Send previously updated data using designed CAN node object
+	xmc_status = XMC_CAN_MO_Transmit(&CAN_NODE_TRANSMIT_LMO_NAME);
+	// Check for success on data transmit
+	if (xmc_status != XMC_CAN_STATUS_SUCCESS){
+		status = xmc_status;
+		return status;
+	}
+	return status;
 }
 
-/***************************************************************************************************************/
+/*****************************************************************************/
 

@@ -49,77 +49,97 @@ int16_t EncoderSpeed = 0;
 
 uint8_t can_calibration_flag = 0;
 
-/***************************************************************************************************************/
+/*****************************************************************************/
 
 void IRQ_NUMBER_CAN_TX_TIMER_HANDLER(void) {
-	uint32_t GPIO_OFFSET = 0;		// Read and Set CAN Identifier from DIP Switch
-	GPIO_OFFSET |= (uint8_t) (!XMC_GPIO_GetInput(CAN_ID1_PORT, CAN_ID1_PIN) << 0);
-	GPIO_OFFSET |= (uint8_t) (!XMC_GPIO_GetInput(CAN_ID2_PORT, CAN_ID2_PIN) << 1);
+	// Read and Set CAN Identifier from DIP Switch
+	uint32_t GPIO_OFFSET = 0;
+	GPIO_OFFSET |= (uint8_t)(!XMC_GPIO_GetInput(CAN_ID1_PORT, CAN_ID1_PIN) << 0);
+	GPIO_OFFSET |= (uint8_t)(!XMC_GPIO_GetInput(CAN_ID2_PORT, CAN_ID2_PIN) << 1);
 	uint32_t CAN_MSG_ID = MOT_FL_ENCODER_DATA | GPIO_OFFSET;
 	CAN_TX_Request(CAN_MSG_ID,
-			(uint8_t[]) {(EncoderSpeed >> 8 & 0xFF), (EncoderSpeed & 0xFF),
-						 (MechanicalAngle >> 8 & 0xFF), (MechanicalAngle & 0xFF)}, 4);
+			(uint8_t[]) {(EncoderSpeed >> 8 & 0xFF),
+						 (EncoderSpeed & 0xFF),
+						 (MechanicalAngle >> 8 & 0xFF),
+						 (MechanicalAngle & 0xFF)}, 4);
 }
 
-/***************************************************************************************************************/
+/*****************************************************************************/
 
 void IRQ_NUMBER_CAN_TIMEOUT_TIMER_HANDLER(void) {
-	if (CAN_TimeOut == true) 		// Check if TimeOut is still True after last Check
+	// Check if TimeOut is still True after last Check
+	if (CAN_TimeOut == true)
 		CAN_speed_ref = 0;
 
-	CAN_TimeOut = true;
+	CAN_TimeOut = false;
 }
 
-/***************************************************************************************************************/
+/*****************************************************************************/
 
 void CAN_IRQ_RX_CALIBRATION_MESSAGE_HANDLER(void) {
-	XMC_CAN_MO_Receive(&CAN_NODE_RECEIVE_LMO_NAME);			// Receive
+	// Receive motor calibration request
+	XMC_CAN_MO_Receive(&CAN_NODE_CALIBRATION_LMO_NAME);
 	can_calibration_flag = true;
 }
 
-/***************************************************************************************************************/
+/*****************************************************************************/
 
 void CAN_IRQ_RX_MESSAGE_HANDLER(void) {
 	CAN_TimeOut = false;
 
-	XMC_CAN_MO_Receive(&CAN_NODE_RECEIVE_LMO_NAME);			// Receive data from CAN Node and transfer into CAN data structure
+	// Receive data from CAN Node and transfer into CAN data structure
+	// intended for setting the motor speed
+	XMC_CAN_MO_Receive(&CAN_NODE_RECEIVE_LMO_NAME);
 
 	uint32_t id = XMC_CAN_MO_GetIdentifier(&CAN_NODE_RECEIVE_LMO_NAME);
     uint8_t *data = CAN_NODE_RECEIVE_LMO_NAME.can_data_byte;
 
-	uint32_t GPIO_OFFSET = 0;		// Read and Set CAN Identifier from DIP Switch
-		GPIO_OFFSET |= (uint8_t) (!XMC_GPIO_GetInput(CAN_ID1_PORT, CAN_ID1_PIN) << 0);
-		GPIO_OFFSET |= (uint8_t) (!XMC_GPIO_GetInput(CAN_ID2_PORT, CAN_ID2_PIN) << 1);
+    // Read and Set CAN Identifier from DIP Switch
+	uint32_t GPIO_OFFSET = 0;
+	GPIO_OFFSET |= (uint8_t)(!XMC_GPIO_GetInput(CAN_ID1_PORT, CAN_ID1_PIN) << 0);
+	GPIO_OFFSET |= (uint8_t)(!XMC_GPIO_GetInput(CAN_ID2_PORT, CAN_ID2_PIN) << 1);
 
+	// conversion from 16 Bit signed integer to rad/s, then to RPM.
 	if (id == (MOT_FL_SPEED_COMMAND | GPIO_OFFSET)) {
-		CAN_speed_ref = (int16_t)((data[0] << 8) + data[1])/RADPS2_15BIT*60.0/(2*PI); // conversion from 16 Bit signed integer to rad/s, then to RPM.
+		CAN_speed_ref = (int16_t)((data[0] << 8) + data[1]) /
+						RADPS2_15BIT * 60.0 / (2 * PI);
 	}
-
+	// Toggle CAN RX LED to indicate that a message has been received
 	#if (CAN_NODE_RECEIVE_LED_ENABLE)
-		XMC_GPIO_ToggleOutput(CAN_RX_LED_PIN_PORT_NAME, CAN_RX_LED_PIN_PIN_NAME);	// Toggle CAN RX LED to indicate that a message has been received
+		XMC_GPIO_ToggleOutput(CAN_RX_LED_PIN_PORT_NAME, CAN_RX_LED_PIN_PIN_NAME);
 	#endif
 }
 
-/***************************************************************************************************************/
+/*****************************************************************************/
 
 void CAN_Initialize(void) {
-	uint32_t GPIO_OFFSET = 0;		// Read and Set CAN Identifier from DIP Switch
-			GPIO_OFFSET |= (uint8_t) (!XMC_GPIO_GetInput(CAN_ID1_PORT, CAN_ID1_PIN) << 0);
-			GPIO_OFFSET |= (uint8_t) (!XMC_GPIO_GetInput(CAN_ID2_PORT, CAN_ID2_PIN) << 1);
+	// Read and Set CAN Identifier from DIP Switch
+	uint32_t GPIO_OFFSET = 0;
+	GPIO_OFFSET |= (uint8_t)(!XMC_GPIO_GetInput(CAN_ID1_PORT, CAN_ID1_PIN) << 0);
+	GPIO_OFFSET |= (uint8_t)(!XMC_GPIO_GetInput(CAN_ID2_PORT, CAN_ID2_PIN) << 1);
 
-	XMC_CAN_MO_SetIdentifier(&CAN_NODE_RECEIVE_LMO_NAME, (uint32_t) (MOT_FL_SPEED_COMMAND | GPIO_OFFSET));
-	XMC_CAN_MO_SetIdentifier(&CAN_NODE_CALIBRATION_LMO_NAME, (uint32_t) CALIBRATION_REQUEST_ALL_MOTORS);
+	XMC_CAN_MO_SetIdentifier(&CAN_NODE_RECEIVE_LMO_NAME,
+			(uint32_t)(MOT_FL_SPEED_COMMAND | GPIO_OFFSET));
+	XMC_CAN_MO_SetIdentifier(&CAN_NODE_CALIBRATION_LMO_NAME,
+			(uint32_t)CALIBRATION_REQUEST_ALL_MOTORS);
 
-	NVIC_EnableIRQ(IRQ_NUMBER_CAN_TIMEOUT_TIMER);	// Enable NVIC IRQ with correct IRQ number - see Reference Manual
-	NVIC_EnableIRQ(IRQ_NUMBER_CAN_TX_TIMER);		// Enable NVIC IRQ with correct IRQ number - see Reference Manual
-	NVIC_EnableIRQ(CAN_IRQ_RX_NUMBER);				// Enable NVIC IRQ with correct IRQ number - see Reference Manual
+	// Enable NVIC IRQ with correct IRQ number - see Reference Manual
+	NVIC_EnableIRQ(IRQ_NUMBER_CAN_TIMEOUT_TIMER);
+	NVIC_EnableIRQ(IRQ_NUMBER_CAN_TX_TIMER);
+	NVIC_EnableIRQ(CAN_IRQ_RX_NUMBER);
 	NVIC_EnableIRQ(CAN_IRQ_RX_CALIBRATION_NUMBER);
 
-	/* Change Interrupt event source of channel 24 (TX Timer) & 16 (TimeOut Timer) & channel 3 (CAN) ... see XMC1400 Reference Manual Table 5-1 */
-	WR_REG(SCU_GENERAL->INTCR0, SCU_GENERAL_INTCR0_INTSEL3_Msk, SCU_GENERAL_INTCR0_INTSEL3_Pos, 0x02);    	// CAN RX
-	WR_REG(SCU_GENERAL->INTCR0, SCU_GENERAL_INTCR0_INTSEL4_Msk, SCU_GENERAL_INTCR0_INTSEL4_Pos, 0x02);
-	WR_REG(SCU_GENERAL->INTCR1, SCU_GENERAL_INTCR1_INTSEL16_Msk, SCU_GENERAL_INTCR1_INTSEL16_Pos, 0x02);    // CAN TimeOut Timer
-	WR_REG(SCU_GENERAL->INTCR1, SCU_GENERAL_INTCR1_INTSEL21_Msk, SCU_GENERAL_INTCR1_INTSEL21_Pos, 0x01);    // CAN TX Timer
+	/* Change Interrupt event source of channel 24 (TX Timer) &
+	 * 16 (TimeOut Timer) & channel 3 (CAN) ...
+	 * see XMC1400 Reference Manual Table 5-1 */
+	WR_REG(SCU_GENERAL->INTCR0, SCU_GENERAL_INTCR0_INTSEL3_Msk,
+			SCU_GENERAL_INTCR0_INTSEL3_Pos, 0x02);	// CAN RX
+	WR_REG(SCU_GENERAL->INTCR0, SCU_GENERAL_INTCR0_INTSEL4_Msk,
+			SCU_GENERAL_INTCR0_INTSEL4_Pos, 0x02);
+	WR_REG(SCU_GENERAL->INTCR1, SCU_GENERAL_INTCR1_INTSEL16_Msk,
+			SCU_GENERAL_INTCR1_INTSEL16_Pos, 0x02);	// CAN TimeOut Timer
+	WR_REG(SCU_GENERAL->INTCR1, SCU_GENERAL_INTCR1_INTSEL21_Msk,
+			SCU_GENERAL_INTCR1_INTSEL21_Pos, 0x01);	// CAN TX Timer
 
 	XMC_CCU4_SLICE_StartTimer(CAN_NODE_RX_TIMEOUT_TIMER_NAME);
 	XMC_CCU4_SLICE_StartTimer(CAN_NODE_TX_TIMER_NAME);
