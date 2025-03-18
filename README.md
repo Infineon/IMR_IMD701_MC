@@ -161,7 +161,7 @@ SPDX-License-Identifier: MIT
     <br>
     &nbsp;
 </li>
-<li> Finally to flash the project onto the board, use the green play button in ModusToolbox™ on the bottom left - 'Quick Panel' - 'Launches' - 'IMR_XMC4700_RC Program (JLink)' to initiate the process.<br><br>
+<li> Finally to flash the project onto the board, use the green play button in ModusToolbox™ on the bottom left - 'Quick Panel' - 'Launches' - 'IMR_IMD701_MC Program (JLink)' to initiate the process.<br><br>
 	<picture>
         <img src="./assets/images/MTB_Import_14.png">
     </picture>
