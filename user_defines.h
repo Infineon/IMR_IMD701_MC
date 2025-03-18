@@ -39,6 +39,33 @@
 #ifndef USER_DEFINES_H_
 #define USER_DEFINES_H_
 
+/* This setting enables the regular setting of 0 motor speed
+ * when no speed command message is received via CAN */
+// 1: default, 0: for board test only
+#define BOARD_IN_IMR_OPERATION 	1U
+/* This setting enables the board to send one constant speed
+ * to the motor at the power on of the board */
+// 0: default, 1: for board test only
+#define BOARD_TEST_CONST_SPEED	0U
+
+/****************** CHANGE BELOW SETTINGS AT YOUR OWN RISK *******************/
+/** Full turn calibration code is out-dated and may need to be re-validated **/
+/*  The need of below settings only happens when the center of the
+ *  angle sensor encoder is not well aligned with the center of the magnet.
+ *  With the circular mounting holes of DEMO_IMR_ANGLE_SENS_V2 board,
+ *  below settings are not needed therefore they should be kept at 0 values.
+ *  With the elongated mounting holes of DEMO_IMR_ANGLE_SENS_V1 board,
+ *  below settings might need to be enabled.
+ *  Start cautiously by only enabling MOTOR_ENC_CALIBRATION ******************/
+// 0: default, 1 enable full turn calibration of the motor-encoder assembly
+#define MOTOR_ENC_CALIBRATION	0U
+// 0: default, 1 enable Look-Up Table saved and loaded from Flash
+#define LUT_FOR_MOTOR_CALIB		0U
+// 0: default, 1 loaded calibration data from Flash
+// !! Note that Data_LoadFromFlash function still needs to be validated !!
+#define CALIB_LOAD_FROM_FLASH	0U
+/*****************************************************************************/
+
 //--------------------------------------------------------------------------------
 //--- HW Configuration:
 //--------------------------------------------------------------------------------

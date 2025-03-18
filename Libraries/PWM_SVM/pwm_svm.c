@@ -1061,7 +1061,9 @@ DAVE_APP_VERSION_t PWM_SVM_GetAppVersion(void)
  */
 PWM_SVM_STATUS_t PWM_SVM_Reinit(PWM_SVM_t* const HandlePtr)
 {
-  
+	PWM_SVM_STATUS_t status = (PWM_SVM_STATUS_t) PWM_SVM_STATUS_SUCCESS;
+	status = PWM_SVM_Init(HandlePtr);
+	return status;
 }
 
 /**

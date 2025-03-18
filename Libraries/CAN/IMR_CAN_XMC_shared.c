@@ -45,7 +45,7 @@ CAN_STATUS_t CAN_TX_Request(uint32_t CAN_ID, uint8_t* Target_Data,
 		CAN_TimeOut++;
 
 		if (CAN_TimeOut >= CAN_TX_TIMEOUT) {
-			XMC_CAN_Enable(CAN_NODE_GLOBAL_HW_NAME);
+			XMC_CAN_Enable(CAN_GLOBAL_HW);
 			return XMC_CAN_STATUS_BUSY;
 		}
 	}

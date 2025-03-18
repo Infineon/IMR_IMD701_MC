@@ -36,16 +36,17 @@
 #include "IMR_CAN_GLOBAL.h"
 #include "cybsp.h"
 #include "cy_utils.h"
+#include "stdbool.h"
 
 #define CAT(x, y) CAT_(x, y)
 #define CAT_(x, y) x ## y
 #define CAN_TX_TIMEOUT	0x400	// Timeout counter value ... 1024
 
 extern bool CAN_TimeOut;
+extern bool CAN_calibration_flag;
 extern int16_t CAN_speed_ref;
 extern uint16_t MechanicalAngle;
 extern int16_t EncoderSpeed;
-extern uint8_t can_calibration_flag;
 
 void CAN_Initialize(void);
 uint32_t XMC_CAN_MO_Busy(XMC_CAN_MO_t *mo_ptr);

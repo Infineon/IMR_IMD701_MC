@@ -138,8 +138,8 @@ uint16_t angle_array[NR_CALIB_STEPS] = {
 		64924,65120,65448,20,160,300,460,660,788,920,
 		1064,1308,1516,1644,1764,1896,2056,2204,2324,2468
 		};
-		*/
-uint16_t angle_array_corrected[NR_CALIB_STEPS];
+uint16_t angle_array_corrected[NR_CALIB_STEPS];*/
+
 uint16_t calib_buf_size = 0;
 uint16_t stepsize = 0;
 uint8_t phase_swapped = 0; 
@@ -170,6 +170,10 @@ void Timer_Control_Loop(void);
 __RAM_FUNC void ControlLoop_FixedPoint(void);
 /*------------------------------------------------*/
 
+/******************************************************************************
+ * CrntFbk_FixedPoint_Init:
+ * Initialize the 3-phase currents feedback from the ADC values
+ *****************************************************************************/
 void CrntFbk_FixedPoint_Init(void)
 {
 	ADC_RAW.Iu_ofst = i.U_offset;
@@ -177,6 +181,11 @@ void CrntFbk_FixedPoint_Init(void)
 	ADC_RAW.Iw_ofst = i.W_offset;
 }
 
+/******************************************************************************
+ * Motor_PrePositioning:
+ * Routine to align the nearest North pole as the 0-degree angle
+ * and with that defining the d-axis reference point
+ *****************************************************************************/
 void Motor_PrePositioning(void)
 {
 	// set angle to zero degrees ->
@@ -218,6 +227,10 @@ void Motor_PrePositioning(void)
 	vtof_counter = 0; 
 }
 
+/******************************************************************************
+ * Motor_DetectRotation:
+ * Routine to check if the motor phases are swapped
+ *****************************************************************************/
 void Motor_DetectRotation(void)
 {
 	if (prepos_flag == FALSE)
@@ -258,25 +271,32 @@ void Motor_DetectRotation(void)
 			{	
 				PWM_SVM_0.phasev_crs = (uint32_t *)&CCU80_CC80->CR1S;
 				PWM_SVM_0.phasew_crs = (uint32_t *)&CCU80_CC82->CR1S;
-				rotation_detect_flag = TRUE;
 				phase_swapped = TRUE;  
-				prepos_flag = FALSE;
-				step_counter = 0; 
-				vtof_counter = 0; 
 			}
 			else
 			{
-				rotation_detect_flag = TRUE; 
 				phase_swapped = FALSE; 
-				vtof_counter = 0; 
-				step_counter = 0; 
-				prepos_flag = FALSE; 
-			} 
+			}
+			vtof_counter = 0;
+			step_counter = 0;
+			prepos_flag = FALSE;
+			rotation_detect_flag = TRUE;
 		}
 		vtof_counter += 1; 
 	}
 }
 
+/******************************************************************************
+ * Motor_EncoderCalibration:
+ * Routine to calibrate the motor with the angle sensor encoder
+ * This is necessary if the mechanical placement of the sensor's center
+ * is not in the same point to the disk magnet's center
+ *
+ * !!!! Since the Data_LoadFromFlash function (and Data_SaveToFlash)
+ * may not be working well yet, if this calibration has to be done,
+ * it is recommended to do this at the start of the operation
+ * therefore avoiding calibration data load from the Flash !!!!
+ *****************************************************************************/
 void Motor_EncoderCalibration(void)
 {
 	if (prepos_flag == FALSE)
@@ -323,6 +343,11 @@ void Motor_EncoderCalibration(void)
 	}	
 }
 
+/******************************************************************************
+ * Data_LoadFromFlash: loading motor-encoder calibration data from Flash
+ * !!!! This function may have to be re-validated !!!!
+ * Current status: use this at your own risk
+ *****************************************************************************/
 void Data_LoadFromFlash(void)
 {
 	flash_address = XMC_FLASH_GetSectorAddress(START_SECTOR);
@@ -334,25 +359,33 @@ void Data_LoadFromFlash(void)
 				(*(ptr_flash_data+2) << 16) | (*(ptr_flash_data+3) << 24);
 		ptr_flash_data += 4;
 	}
-	/*for (count = 0; count < sizeof(angle_array)/2; count++) {
+#if (LUT_FOR_MOTOR_CALIB)
+	for (count = 0; count < sizeof(angle_array)/2; count++) {
 		angle_array[count*2] = read_values_from_flash[count] & 0x0000ffff;
 		angle_array[count*2+1] =
 				(read_values_from_flash[count] & 0xffff0000) >> 16;
 	}
 	stepsize = read_values_from_flash[210] & 0x0000ffff;
-	calib_buf_size = (read_values_from_flash[210] & 0xffff0000) >> 16;*/
+	calib_buf_size = (read_values_from_flash[210] & 0xffff0000) >> 16;
+#endif
 
 	MechanicalAngle_initial = read_values_from_flash[211] & 0x0000ffff;
 
-	rotation_detect_flag = TRUE;
 	encoder_calib_flag = TRUE;
+	rotation_detect_flag = TRUE;
 	prepos_flag = TRUE;
-	ThetaPwm_U16 = 0; 
+
+	ThetaPwm_U16 = 0;
 	step_counter = 0;
 
 	//Motor_PrePositioning();
 }
 
+/******************************************************************************
+ * Data_SaveToFlash: saving motor-encoder calibration data to Flash
+ * !!!! This function may have to be re-validated !!!!
+ * Current status: use this at your own risk
+ *****************************************************************************/
 void Data_SaveToFlash(void)
 {
 	uint32_t page[XMC_FLASH_WORDS_PER_PAGE];
@@ -360,13 +393,19 @@ void Data_SaveToFlash(void)
 	for (uint8_t j = 0; j < 4; j++){
 		for (uint16_t i = 0; i < XMC_FLASH_WORDS_PER_PAGE; i++)
 		{
-			/*page[i] = angle_array[((i+(XMC_FLASH_WORDS_PER_PAGE * j))*2)];
+#if (LUT_FOR_MOTOR_CALIB)
+			page[i] = angle_array[((i+(XMC_FLASH_WORDS_PER_PAGE * j))*2)];
 			page[i] |= angle_array[((i+(XMC_FLASH_WORDS_PER_PAGE * j))*2)+1]
-								   << 16;*/
+								   << 16;
+#endif
 			if(((i+(XMC_FLASH_WORDS_PER_PAGE * j))*2) > NR_CALIB_STEPS+2) {
-				//page[i] = 0;
+#if (LUT_FOR_MOTOR_CALIB)
+				page[i] = 0;
+#endif
 			} else if(((i+(XMC_FLASH_WORDS_PER_PAGE * j))*2) == NR_CALIB_STEPS){
-				//page[i] = stepsize | (calib_buf_size << 16);
+#if (LUT_FOR_MOTOR_CALIB)
+				page[i] = stepsize | (calib_buf_size << 16);
+#endif
 			} else if(((i+(XMC_FLASH_WORDS_PER_PAGE * j))*2) == NR_CALIB_STEPS+2){
 				page[i] = MechanicalAngle_initial;
 			}
@@ -394,6 +433,11 @@ void Data_SaveToFlash(void)
 	}
 }
 
+/******************************************************************************
+ * ControlLoop_FixedPoint:
+ * The heart of the motor control with Fixed-Point implementation
+ * !!! Do not enable LUT_FOR_MOTOR_CALIB for default operation !!!
+ *****************************************************************************/
 __RAM_FUNC void ControlLoop_FixedPoint(void)
 {
 	//--------------------------------------------------------------------
@@ -425,16 +469,17 @@ __RAM_FUNC void ControlLoop_FixedPoint(void)
 		MechanicalAngle = (MAX_INT - MechanicalAngle_initial) +
 				MechanicalAngleLocal;
 	}
-
+#if (LUT_FOR_MOTOR_CALIB)
 	// retrieve LUT index based on current angle
-	/*uint16_t angle_idx;
+	uint16_t angle_idx;
 	int16_t angle_error;
 	angle_idx = (MechanicalAngle * calib_buf_size) /
 				(uint16_t)(calib_buf_size*stepsize);
 		
 	// compute the angle error based on LUT data and correct
 	angle_error = angle_array[angle_idx] - stepsize*angle_idx;
-	MechanicalAngle = MechanicalAngle - angle_error; */
+	MechanicalAngle = MechanicalAngle - angle_error;
+#endif
 
 	// [per-unit] Q1.15 Motor shaft mechanical position
 	ThetaMeRaw_U16 = (uint16_t)((MechanicalAngle) & 0xFFFF);
@@ -531,6 +576,9 @@ __RAM_FUNC void ControlLoop_FixedPoint(void)
 	//-----------------------------------------------------------
 	if (SpdCtrlPrdFg)
 	{
+#if (BOARD_TEST_CONST_SPEED)
+		CAN_speed_ref = 120; // [rpm]
+#endif
 		// [per-unit] Speed command unit normalized wrt -100 ~ 100
 		// ==> -439.453 ~ 439.453 [rpm]
 		RpmRefPu = (q_t)CAN_speed_ref*IFX_Q(1/RPM_BASE);
@@ -569,6 +617,10 @@ __RAM_FUNC void ControlLoop_FixedPoint(void)
 	PWM_SVM_SVMUpdate(&PWM_SVM_0, MIcmdOut_U16, ThetaPwm_U24);
 }
 
+/******************************************************************************
+ * ControlLoop_FixedPointInit:
+ * Initialize the fixed-point control loop with the PI controller
+ *****************************************************************************/
 void ControlLoop_FixedPointInit(void)
 {
 	// Mark that the valid POSIF sampling NOT takes place.
@@ -599,28 +651,28 @@ void Timer_Control_Loop(void)
 	}
 	else if ((rotation_detect_flag == TRUE) && (encoder_calib_flag == FALSE))
 	{
-		//Motor_EncoderCalibration();
+#if(MOTOR_ENC_CALIBRATION)
+		Motor_EncoderCalibration();
+#else
 		encoder_calib_flag = TRUE;
 		prepos_flag = TRUE;
 		step_counter = 0;
 		ThetaPwm_U16 = 0;
+#endif
 	}
 	else
 	{
 		ControlLoop_FixedPoint();
 	}
-	if (can_calibration_flag == TRUE) {
+	if (CAN_calibration_flag == true) {
 		rotation_detect_flag = FALSE;
 		encoder_calib_flag = FALSE;
 		prepos_flag = FALSE;
 		ThetaPwm_U16 = 0;
 		step_counter = 0;
-		can_calibration_flag = FALSE;
+		CAN_calibration_flag = false;
 	}
-
-	//ControlLoop_FixedPoint();
 }
-
 
 /**
  * @brief main() - Application entry point
@@ -692,9 +744,12 @@ int main(void)
 	// right before Task0 Timer ISR initiated to start
 	ControlLoop_FixedPointInit();
 
-	// Loading angle_array from flash:
-	// If you want to calibrate on startup, comment this line
-	//Data_LoadFromFlash();
+#if (CALIB_LOAD_FROM_FLASH)
+	// Only enable this setting when Data_LoadFromFlash function
+	// is validated to work well. Enable it at your own risk.
+	// Loading angle_array from Flash
+	Data_LoadFromFlash();
+#endif
 
 	for (uint32_t i = 0; i < 200000; i++)
     {

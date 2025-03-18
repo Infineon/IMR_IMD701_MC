@@ -43,14 +43,17 @@
 #include "DataTypes.h"
 
 bool CAN_TimeOut = false;
+bool CAN_calibration_flag = false;
+
 int16_t CAN_speed_ref = 0;
 uint16_t MechanicalAngle = 0;
 int16_t EncoderSpeed = 0;
 
-uint8_t can_calibration_flag = 0;
-
-/*****************************************************************************/
-
+/*****************************************************************************
+ * Handler for Encoder Data transmit message
+ * Encoder data is transmitted regularly according to the setting
+ * in CCU4.1 tick resolution - set to 0.67 us
+ *****************************************************************************/
 void IRQ_NUMBER_CAN_TX_TIMER_HANDLER(void) {
 	// Read and Set CAN Identifier from DIP Switch
 	uint32_t GPIO_OFFSET = 0;
@@ -64,26 +67,37 @@ void IRQ_NUMBER_CAN_TX_TIMER_HANDLER(void) {
 						 (MechanicalAngle & 0xFF)}, 4);
 }
 
-/*****************************************************************************/
-
+/*****************************************************************************
+ * Handler for CAN timeout message
+ * CAN timeout happens when no CAN speed message is received for
+ * some amount of time (see CCU4.0 tick resolution - set to 21.3 us)
+ *****************************************************************************/
 void IRQ_NUMBER_CAN_TIMEOUT_TIMER_HANDLER(void) {
 	// Check if TimeOut is still True after last Check
 	if (CAN_TimeOut == true)
 		CAN_speed_ref = 0;
 
+#if (BOARD_IN_IMR_OPERATION)
+	CAN_TimeOut = true;
+#else
 	CAN_TimeOut = false;
+#endif
 }
 
-/*****************************************************************************/
-
+/*****************************************************************************
+ * Handler for Motor Calibration message
+ *****************************************************************************/
 void CAN_IRQ_RX_CALIBRATION_MESSAGE_HANDLER(void) {
 	// Receive motor calibration request
 	XMC_CAN_MO_Receive(&CAN_NODE_CALIBRATION_LMO_NAME);
-	can_calibration_flag = true;
+	CAN_calibration_flag = true;
 }
 
-/*****************************************************************************/
-
+/*****************************************************************************
+ * Handler for Motor Speed message
+ * Whenever motor speed message is received, the CAN timeout is reset
+ * i.e. the CAN timeout is set to false
+ *****************************************************************************/
 void CAN_IRQ_RX_MESSAGE_HANDLER(void) {
 	CAN_TimeOut = false;
 
@@ -110,8 +124,10 @@ void CAN_IRQ_RX_MESSAGE_HANDLER(void) {
 	#endif
 }
 
-/*****************************************************************************/
-
+/*****************************************************************************
+ * Initialize all CAN Logical Message Objects (LMOs)
+ * and enable the related interrupts
+ *****************************************************************************/
 void CAN_Initialize(void) {
 	// Read and Set CAN Identifier from DIP Switch
 	uint32_t GPIO_OFFSET = 0;
