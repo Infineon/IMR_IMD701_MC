@@ -96,9 +96,9 @@
 //--- Emulated Encoder ---
 /* for IMR: Refer to
  * https://www.infineon.com/dgdl/Infineon-TLE5012B_Exxxx-DataSheet-v02_01-EN.pdf?fileId=db3a304334fac4c601350f31c43c433f */
-#define ENCODER_PPR_1X	4096		// [count/revolution]
+#define ENCODER_PPR_1X	1024		// [pulse/revolution]
 									// 12-bit Encoder pulses per revolution (PPR)
-#define ENCODER_PPR_4X	(ENCODER_PPR_1X*4)	// [count/revolution]
+#define ENCODER_PPR_4X	(ENCODER_PPR_1X*4)	// [step/revolution]
 											// Quadratic value of the encoder PPR
 
 //--------------------------------------------------------
