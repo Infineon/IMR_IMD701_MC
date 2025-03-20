@@ -18,7 +18,7 @@ SPDX-License-Identifier: MIT
 
 ### Features
 
-- Programmable motor controller integrating 5 V 32-bit microcontroller Arm® Cortex®-M0 XMC1404 with smart 3-phase gate driver IC 6EDL7141
+- Programmable motor controller integrating 32-bit microcontroller Arm® Cortex®-M0 XMC1404 with smart 3-phase gate driver IC 6EDL7141
 - CAN bus communication with onboard CAN transceiver
 - Onboard DIP switch for unique board identification
 - Low Rds(on) in small package MOSFETs for the motor inverters
