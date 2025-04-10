@@ -158,6 +158,8 @@ NVM_STATUS status;
 uint32_t flash_address = 0;
 uint32_t read_values_from_flash[XMC_FLASH_WORDS_PER_PAGE*4] = { 0 };
 
+uint8_t* git_commit_hash = (uint8_t*)GIT_COMMIT_HASH;
+
 /* ------ Functions declaration ------------------*/
 void CrntFbk_FixedPoint_Init(void);
 void Motor_PrePositioning(void);
@@ -736,6 +738,9 @@ int main(void)
 	{
 		__NOP();
 	}
+
+	// Send out commit hash of currently flashed software
+	CAN_TX_Request(COMMIT_HASH, (uint8_t*)git_commit_hash, 7);
 
 	// Enable POSIF Interface
 	ENCODER_POSIF_Start(&ENCODER_POSIF_0);

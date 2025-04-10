@@ -119,9 +119,9 @@ void CAN_IRQ_RX_MESSAGE_HANDLER(void) {
 						RADPS2_15BIT * 60.0 / (2 * PI);
 	}
 	// Toggle CAN RX LED to indicate that a message has been received
-	#if (CAN_NODE_RECEIVE_LED_ENABLE)
-		XMC_GPIO_ToggleOutput(CAN_RX_LED_PIN_PORT_NAME, CAN_RX_LED_PIN_PIN_NAME);
-	#endif
+#if (CAN_NODE_RECEIVE_LED_ENABLE)
+	XMC_GPIO_ToggleOutput(CAN_RX_LED_PIN_PORT_NAME, CAN_RX_LED_PIN_PIN_NAME);
+#endif
 }
 
 /*****************************************************************************

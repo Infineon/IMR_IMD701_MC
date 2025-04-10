@@ -54,28 +54,6 @@ uint32_t XMC_CAN_MO_Busy(XMC_CAN_MO_t *mo_ptr);
 void CAN_IRQ_RX_MESSAGE_HANDLER(void);
 void CAN_IRQ_RX_CALIBRATION_MESSAGE_HANDLER(void);
 
-// Select the CAN_Node name chosen in the MTB Device Configurator;
-#define CAN_NODE_CONFIGURATOR_NAME				CAN_NODE
-// Select the CAN_Node number chosen in the MTB Device Configurator;
-// CAN Node 0 ... CAN_NODE0		CAN Node 1 ... CAN_NODE1
-#define CAN_NODE_CONFIGURATOR_CHANNEL			CAN_NODE1
-
-/* CAN Interrupt Number Setting
- * XMC1404 = IRQ3_IRQn; 		XMC4700 = CAN0_0_IRQn */
-#define CAN_IRQ_RX_NUMBER               		IRQ3_IRQn
-/* CAN Interrupt Handler Setting
- * XMC1404 = IRQ3_Handler;	XMC4700 = IRQ_Hdlr_76 */
-#define CAN_IRQ_RX_MESSAGE_HANDLER         		IRQ3_Handler
-#define CAN_IRQ_RX_CALIBRATION_NUMBER			IRQ4_IRQn
-#define CAN_IRQ_RX_CALIBRATION_MESSAGE_HANDLER	IRQ4_Handler
-
-#define CAN_STATUS_NODE_BUSY		( 2U )
-
-#define CAN_NODE_GLOBAL_HW_NAME			CAT(CAN_NODE_CONFIGURATOR_NAME, _HW)
-#define CAN_NODE_RECEIVE_LMO_NAME		CAT(CAN_NODE_CONFIGURATOR_NAME, _LMO_0)
-#define CAN_NODE_TRANSMIT_LMO_NAME		CAT(CAN_NODE_CONFIGURATOR_NAME, _LMO_1)
-#define CAN_NODE_CALIBRATION_LMO_NAME	CAT(CAN_NODE_CONFIGURATOR_NAME, _LMO_2)
-
 /************************************************************************/
 /******************* INVERTER BOARD - IMPORTANT NOTICE ******************/
 /************************************************************************/
@@ -87,31 +65,36 @@ void CAN_IRQ_RX_CALIBRATION_MESSAGE_HANDLER(void);
  * Make sure to deactivate the option to "Store Config in Flash"
  *
  * Activate both Capture Compare Units CCU4_0 and CCU 4_1
- * 	Activate Slice 0 for CCU4_0
+ * 	Activate Slice 0 for CCU4_0 (CAN_TIMEOUT)
  * 		Set the desired Timer Frequency
  * 		(Prescaler Initial Value - 2048 and Timer Period Value - 5860 for 4Hz)
  * 		Activate "Period Match while Counting Up" and
  * 		set "Period Match Up Service Request" to Service Request 2
  * 		Deactivate "Start After Initialization"
  *
- * 	Activate Slice 0 for CCU4_1
+ * 	Activate Slice 0 for CCU4_1 (CAN_TX_TIMER)
  * 		Set the desired Timer Frequency
  * 		(Prescaler Initial Value - 64 and Timer Period Value - 15000 for 100Hz)
  * 		Activate "Period Match while Counting Up" and
  * 		set "Period Match Up Service Request" to Service Request 0
  * 		Deactivate "Start After Initialization"
- */
+ ************************************************************************/
+
+// Select the CAN_Node name chosen in the MTB Device Configurator;
+#define CAN_NODE_CONFIGURATOR_NAME			CAN_NODE
+// Select the CAN_Node number chosen in the MTB Device Configurator;
+// CAN Node 0 ... CAN_NODE0		CAN Node 1 ... CAN_NODE1
+#define CAN_NODE_CONFIGURATOR_CHANNEL		CAN_NODE1
+// Select the CAN_Node RX timeout timer name
+// chosen in the MTB Device Configurator (CCU4);
+#define CAN_NODE_RX_TIMEOUT_CCU4_NAME		CAN_TIMEOUT
+// Select the CAN_Node TX timer name
+// chosen in the MTB Device Configurator (CCU4);
+#define CAN_NODE_TX_TIMER_CCU4_NAME			CAN_TX_TIMER
 
 /************************************************************************/
 /****************** NOT CHANGE SETTINGS ABOVE THIS LINE *****************/
 /************************************************************************/
-
-// Select the CAN_Node RX timeout timer name
-// chosen in the MTB Device Configurator (CCU4);
-#define CAN_NODE_RX_TIMEOUT_CCU4_NAME	CAN_TIMEOUT
-// Select the CAN_Node TX timer name
-// chosen in the MTB Device Configurator (CCU4);
-#define CAN_NODE_TX_TIMER_CCU4_NAME		CAN_TX_TIMER
 
 // Select if the board is supposed to receive CAN messages;
 // 0U ... CAN Receive NOT used; 1U ... CAN Receive used;
@@ -132,6 +115,9 @@ void CAN_IRQ_RX_CALIBRATION_MESSAGE_HANDLER(void);
 /************** DO NOT CHANGE SETTINGS BELOW THIS LINE ******************/
 /************************************************************************/
 
+#define CAN_NODE_RECEIVE_LMO_NAME		CAT(CAN_NODE_CONFIGURATOR_NAME, _LMO_0)
+#define CAN_NODE_TRANSMIT_LMO_NAME		CAT(CAN_NODE_CONFIGURATOR_NAME, _LMO_1)
+#define CAN_NODE_CALIBRATION_LMO_NAME	CAT(CAN_NODE_CONFIGURATOR_NAME, _LMO_2)
 #define CAN_NODE_RX_TIMEOUT_TIMER_NAME	CAT(CAN_NODE_RX_TIMEOUT_CCU4_NAME, _HW)
 #define CAN_NODE_TX_TIMER_NAME			CAT(CAN_NODE_TX_TIMER_CCU4_NAME, _HW)
 
@@ -139,6 +125,15 @@ void CAN_IRQ_RX_CALIBRATION_MESSAGE_HANDLER(void);
 #define CAN_RX_LED_PIN_PORT_NAME	CAT(CAN_RX_LED_PIN_CONFIGURATOR_NAME, _PORT)
 #define CAN_RX_LED_PIN_PIN_NAME		CAT(CAN_RX_LED_PIN_CONFIGURATOR_NAME, _PIN)
 #endif
+
+/*CAN Interrupt Number Setting
+ * XMC1404 = IRQ3_IRQn; 		XMC4700 = CAN0_0_IRQn */
+#define CAN_IRQ_RX_NUMBER               		IRQ3_IRQn
+/* CAN Interrupt Handler Setting
+ * XMC1404 = IRQ3_Handler;	XMC4700 = IRQ_Hdlr_76 */
+#define CAN_IRQ_RX_MESSAGE_HANDLER         		IRQ3_Handler
+#define CAN_IRQ_RX_CALIBRATION_NUMBER			IRQ4_IRQn
+#define CAN_IRQ_RX_CALIBRATION_MESSAGE_HANDLER	IRQ4_Handler
 
 /* IRQ Event Source Names for XMC1404
  * see XMC1400 Reference Manual Table 5-1 */

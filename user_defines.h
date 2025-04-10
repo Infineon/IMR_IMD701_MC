@@ -94,9 +94,9 @@
 									// Inductance Line to Line
 
 //--- Emulated Encoder ---
-/* for IMR: Refer to
- * https://www.infineon.com/dgdl/Infineon-TLE5012B_Exxxx-DataSheet-v02_01-EN.pdf?fileId=db3a304334fac4c601350f31c43c433f */
-#define ENCODER_PPR_1X	1024		// [pulse/revolution]
+/* for IMR: Refer to Figure 5-25 of TLE5012B User Manual
+ * https://www.infineon.com/dgdl/Infineon-Angle_Sensor_TLE5012B-UM-v01_02-en-UserManual-v01_02-EN.pdf?fileId=5546d46146d18cb40146ec2eeae4633b&da=t */
+#define ENCODER_PPR_1X	4096		// [pulse/revolution]
 									// 12-bit Encoder pulses per revolution (PPR)
 #define ENCODER_PPR_4X	(ENCODER_PPR_1X*4)	// [step/revolution]
 											// Quadratic value of the encoder PPR

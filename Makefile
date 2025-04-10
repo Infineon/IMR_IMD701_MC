@@ -135,6 +135,9 @@ PREBUILD=
 # Custom post-build commands to run.
 POSTBUILD=
 
+# Include commit hash to flash to board for info
+GIT_COMMIT := $(shell git rev-parse --short HEAD)
+DEFINES += GIT_COMMIT_HASH=\"$(GIT_COMMIT)\"
 
 ################################################################################
 # Paths
