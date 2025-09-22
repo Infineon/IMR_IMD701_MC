@@ -150,7 +150,7 @@ SPDX-License-Identifier: MIT
     <br>
     &nbsp;
 </li>
-<li> Before flashing the project onto the board, connect the XMC™ Link Programming adapter using the 10-pin flat cable and <a href="./assets/DEMO_IMR_PROGADPTR_V1@e7eacb3013a-zip">the programming adapter</a> to provide power to the board. If the programming adapter is not available, additional wires need to be connected to the edge-card pins as indicated in the image below. <br><br>
+<li> Before flashing the project onto the board, connect the XMC™ Link Programming adapter using the 10-pin flat cable and <a href="./assets/DEMO_IMR_PROGADPTR_V1@e7eacb3013a.zip">the programming adapter</a> to provide power to the board. If the programming adapter is not available, additional wires need to be connected to the edge-card pins as indicated in the image below. One 48V connection on bottom / top side is good enough to power up the MCU for the programming. <br><br>
 	<picture>
         <img src="./assets/images/MTB_Import_12.png">
     </picture>
